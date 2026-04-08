@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Altyapı Sorgulama Platformu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+    <div class="bg-mesh"></div>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <span class="icon">⚡</span>
+                <h1>Altyapı Sorgulama</h1>
+            </div>
+            <button id="themeToggle" class="btn-icon" aria-label="Temayı Değiştir">
+                🌓
+            </button>
+        </header>
+
+        <main>
+            <section class="glass-card query-section">
+                <h2>Altyapınızı Sorgulayın</h2>
+                <p>Adres bilginizi seçerek internet altyapınızın desteklediği maksimum hızı öğrenin.</p>
+                
+                <form id="infrastructureForm" class="form-grid">
+                    <div class="form-group">
+                        <label for="province">İl</label>
+                        <select id="province" required>
+                            <option value="">Seçiniz...</option>
+                            <option value="34">İstanbul</option>
+                            <option value="06">Ankara</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="district">İlçe</label>
+                        <select id="district" disabled>
+                            <option value="">İl Seçiniz...</option>
+                            <option value="1234">Kadıköy</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="neighborhood">Mahalle</label>
+                        <select id="neighborhood" disabled>
+                            <option value="">İlçe Seçiniz...</option>
+                            <option value="5678">Caferağa Mah.</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="street">Sokak/Cadde</label>
+                        <select id="street" disabled>
+                            <option value="">Mahalle Seçiniz...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="building">Bina</label>
+                        <select id="building" disabled>
+                            <option value="">Sokak Seçiniz...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="apartment">Daire / İç Kapı</label>
+                        <select id="apartment" disabled>
+                            <option value="">Bina Seçiniz...</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary" id="submitBtn">Sorgula</button>
+                </form>
+            </section>
+
+            <section id="resultsSection" class="glass-card result-section hidden">
+                <div class="result-header">
+                    <h3>Sonuçlar</h3>
+                    <div class="badge success">Kullanılabilir</div>
+                </div>
+
+                <div class="infrastructure-grid">
+                    <div class="stat-card">
+                        <span class="stat-icon">📥</span>
+                        <div class="stat-info">
+                            <span class="stat-label">XDSL Port Hızı</span>
+                            <strong class="stat-value" id="resXdslSpeed">-</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card highlight">
+                        <span class="stat-icon">🚀</span>
+                        <div class="stat-info">
+                            <span class="stat-label">Fiber Hızı</span>
+                            <strong class="stat-value" id="resFiberSpeed">-</strong>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <span class="stat-icon">🏢</span>
+                        <div class="stat-info">
+                            <span class="stat-label">Santral</span>
+                            <strong class="stat-value" id="resExchange">-</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
