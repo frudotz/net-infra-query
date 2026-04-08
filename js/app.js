@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Frontend: /api/infra
             // Cloudflare Worker lokal geliştirme aşamasında genellikle 8787 portunda ayaktadır
-            const res = await fetch('http://127.0.0.1:8787/api/infra');
+            const res = await fetch('https://niq.api.frudotz.com/api/infra');
             const data = await res.json();
 
             if (data.success) {
