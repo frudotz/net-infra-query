@@ -1,4 +1,4 @@
-name = "altyapi-worker"
+name = "net-infra-query"
 main = "index.js"
 compatibility_date = "2024-04-05"
 
