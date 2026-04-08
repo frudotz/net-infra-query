@@ -1,5 +1,3 @@
-import { fetchInfrastructureDemo } from './adapters/demo.js';
-
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -19,6 +17,25 @@ function handleOptions(request) {
     }
 }
 
+async function fetchInfrastructureDemo() {
+    return {
+        port: {
+            status: "available",
+            speedKbps: 1000000,
+            speedLabel: "1000 Mbps"
+        },
+        exchange: {
+            name: "KADIKÖY",
+            distanceM: 1250
+        },
+        fiber: {
+            available: true,
+            maxSpeedKbps: 1000000,
+            maxSpeedLabel: "1 Gbps"
+        }
+    };
+}
+
 export default {
     async fetch(request, env, ctx) {
         if (request.method === 'OPTIONS') {
@@ -29,7 +46,7 @@ export default {
 
         if (url.pathname.startsWith('/api/infra')) {
             try {
-                // Burada request normalization ve validation ileride devreye girecek.
+                // Mock data response
                 const data = await fetchInfrastructureDemo();
                 return new Response(JSON.stringify({ success: true, data: data }), {
                     headers: { 'Content-Type': 'application/json', ...corsHeaders },

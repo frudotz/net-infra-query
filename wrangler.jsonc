@@ -1,14 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "net-infra-query",
+  "main": "worker.js",
   "compatibility_date": "2026-04-08",
   "observability": {
     "enabled": true
   },
   "assets": {
     "directory": "."
-  },
-  "compatibility_flags": [
-    "nodejs_compat"
-  ]
+  }
 }
