@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // API Linkini backend subdomain'ine göre güncelledik
-            const res = await fetch('https://niq.api.frudotz.com/api/infra');
+            const res = await fetch('https://niq.api.frudotz.com/');
             const data = await res.json();
 
             if (data.success) {

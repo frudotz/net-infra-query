@@ -44,7 +44,7 @@ export default {
 
         const url = new URL(request.url);
 
-        if (url.pathname.startsWith('/api/infra')) {
+        if (url.pathname === '/') {
             try {
                 // Mock data response
                 const data = await fetchInfrastructureDemo();
