@@ -7,8 +7,7 @@
   },
   "kv_namespaces": [
     {
-      "binding": "ALTYAPI_CACHE",
-      "id": "eab03e4822xxEXAMPLExx2b14441"
+      "binding": "ALTYAPI_CACHE"
     }
   ]
 }
