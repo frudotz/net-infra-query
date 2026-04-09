@@ -159,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('resXdslSpeed').textContent = data.data.port.speedLabel || 'Yok';
                 document.getElementById('resFiberSpeed').textContent = data.data.fiber.maxSpeedLabel || 'Yok';
                 document.getElementById('resExchange').textContent = data.data.exchange.name || 'Bilinmiyor';
+                document.getElementById('resAddress').textContent = data.data.address?.text || 'Bilinmiyor';
                 
                 resultsSection.classList.remove('hidden');
                 resultsSection.scrollIntoView({ behavior: 'smooth' });

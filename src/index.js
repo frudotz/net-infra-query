@@ -55,10 +55,26 @@ function extractDataFromSoap(data, key) {
 async function fetchRealInfrastructure(kapi, il, env) {
     if (!env.INFRA_SOURCE) throw new Error("INFRA_SOURCE yapılandırılmamış.");
 
-    // API expects GET /sorgula?kapi=...&il=...
     const url = `${env.INFRA_SOURCE}?kapi=${kapi}&il=${il}`;
-    const raw = await fetchTarget(url, env, { method: "GET" });
+    const addressUrl = env.ADDRESS_SOURCE ? `${env.ADDRESS_SOURCE}/TT_AcikAdres.php?bbk=${kapi}` : null;
+
+    const reqs = [fetchTarget(url, env, { method: "GET" })];
+    if (addressUrl) reqs.push(fetchTarget(addressUrl, env, { method: "GET" }).catch(e => null));
+
+    const [raw, rawAddress] = await Promise.all(reqs);
     const upstream = await raw.json();
+
+    let acikAdresText = "Adres bulunamadı";
+    if (rawAddress) {
+        try {
+            const addressJson = await rawAddress.json();
+            const resultObj = addressJson?.soapenvBody?.AcikAdresGetirResponse?.AcikAdresGetirReturn;
+            if (resultObj && resultObj.ns22AcikAdres) {
+                // Remove extra spaces (2 or more spaces -> 1 space)
+                acikAdresText = resultObj.ns22AcikAdres.replace(/\s{2,}/g, ' ').trim();
+            }
+        } catch (e) { }
+    }
 
     // API yapısına uygun haritalama
     const data = upstream?.altyapi?.data || {};
@@ -82,6 +98,9 @@ async function fetchRealInfrastructure(kapi, il, env) {
             available: isFiber,
             maxSpeedKbps: isFiber ? speedKbps : null,
             maxSpeedLabel: isFiber ? formatSpeed(speedKbps) : 'Yok',
+        },
+        address: {
+            text: acikAdresText
         }
     };
 }
