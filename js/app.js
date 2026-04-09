@@ -112,17 +112,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const saved = localStorage.getItem('lastQuery');
             if (!saved) return;
             const savedData = JSON.parse(saved);
-            showResults(savedData.data);
+            showResults(savedData.data, savedData.bbk);
             resultsSection.scrollIntoView({ behavior: 'smooth' });
         });
     }
 
-    function showResults(infraData) {
+    function showResults(infraData, bbkArg) {
         // Eski veri şemasıyla veya yayınlanmamış backend ile uyumluluk kalkanı
-        const bbk = infraData.bbk || '-';
+        const bbk = infraData.bbk || bbkArg || '-';
         const address = infraData.address?.text || 'Bilinmiyor';
         
         const type = infraData.type || (infraData.exchange && infraData.exchange.name) || '-';
+        const isFiber = type.toUpperCase().includes('FIBER');
         
         let portStatus = infraData.portStatus;
         if (!portStatus) {
@@ -130,12 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let speed = infraData.maxSpeed;
-        if (!speed) {
-             if (type.toUpperCase().includes('FIBER')) {
-                 speed = (infraData.fiber && infraData.fiber.maxSpeedLabel) ? infraData.fiber.maxSpeedLabel : '1000 Mbps';
-             } else {
-                 speed = (infraData.port && infraData.port.speedLabel) || '-';
-             }
+        if (isFiber) {
+            speed = '1000 Mbps'; // Fiber ise her türlü (eski/yeni API) 1000 Mbps göster
+        } else if (!speed) {
+            speed = (infraData.port && infraData.port.speedLabel) || '-';
         }
 
         let distance = infraData.distance;
@@ -150,6 +149,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('resPort').textContent = portStatus;
         document.getElementById('resSpeed').textContent = speed;
         document.getElementById('resDistance').textContent = distance;
+        
+        // Fiber ise santral mesafesi kartını görünmez yap
+        const distanceCard = document.getElementById('resDistance').closest('.stat-card');
+        if (distanceCard) {
+            distanceCard.style.display = isFiber ? 'none' : 'flex';
+        }
         
         resultsSection.classList.remove('hidden');
     }
@@ -273,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
 
             if (data.success) {
-                showResults(data.data);
+                showResults(data.data, bbk);
                 
                 // Save to localStorage
                 const today = new Date().toISOString().split('T')[0];
