@@ -51,10 +51,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const savedData = JSON.parse(saved);
             const d = savedData.data;
 
+            // Eski şema ile geriye dönük uyumluluk
+            const type = d.type || (d.exchange && d.exchange.name) || '-';
+            let speed = d.maxSpeed;
+            if (!speed) { // Eğer eski şemaysa
+                 if (type.toUpperCase().includes('FIBER')) {
+                     speed = (d.fiber && d.fiber.maxSpeedLabel) || '1000 Mbps';
+                 } else {
+                     speed = (d.port && d.port.speedLabel) || '-';
+                 }
+            }
+
             if(lastQueryAddressText) lastQueryAddressText.textContent = d.address?.text || 'Bilinmiyor';
-            // Son sorgu kartında Tür ve Hız bilgisini yan yana gösterelim
-            if(lastQuerySpeed) lastQuerySpeed.textContent = `Tür: ${d.type || '-'}`;
-            if(lastQueryFiber) lastQueryFiber.textContent = `Hız: ${d.maxSpeed || '-'}`;
+            if(lastQuerySpeed) lastQuerySpeed.textContent = `Tür: ${type}`;
+            if(lastQueryFiber) lastQueryFiber.textContent = `Hız: ${speed}`;
             if(lastQueryDate) lastQueryDate.textContent = savedData.date;
             
             lastQuerySection?.classList.remove('hidden');
@@ -108,13 +118,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showResults(infraData) {
-        document.getElementById('resBbk').textContent = infraData.bbk || '-';
-        document.getElementById('resAddress').textContent = infraData.address?.text || 'Bilinmiyor';
+        // Eski veri şemasıyla veya yayınlanmamış backend ile uyumluluk kalkanı
+        const bbk = infraData.bbk || '-';
+        const address = infraData.address?.text || 'Bilinmiyor';
         
-        document.getElementById('resType').textContent = infraData.type || '-';
-        document.getElementById('resPort').textContent = infraData.portStatus || '-';
-        document.getElementById('resSpeed').textContent = infraData.maxSpeed || '-';
-        document.getElementById('resDistance').textContent = infraData.distance || '-';
+        const type = infraData.type || (infraData.exchange && infraData.exchange.name) || '-';
+        
+        let portStatus = infraData.portStatus;
+        if (!portStatus) {
+            portStatus = (infraData.port && infraData.port.status === 'available') ? 'Var' : 'Yok';
+        }
+
+        let speed = infraData.maxSpeed;
+        if (!speed) {
+             if (type.toUpperCase().includes('FIBER')) {
+                 speed = (infraData.fiber && infraData.fiber.maxSpeedLabel) ? infraData.fiber.maxSpeedLabel : '1000 Mbps';
+             } else {
+                 speed = (infraData.port && infraData.port.speedLabel) || '-';
+             }
+        }
+
+        let distance = infraData.distance;
+        if (!distance) {
+            distance = (infraData.exchange && infraData.exchange.distanceM) ? `${infraData.exchange.distanceM} Metre` : 'Belirsiz';
+        }
+
+        document.getElementById('resBbk').textContent = bbk;
+        document.getElementById('resAddress').textContent = address;
+        
+        document.getElementById('resType').textContent = type;
+        document.getElementById('resPort').textContent = portStatus;
+        document.getElementById('resSpeed').textContent = speed;
+        document.getElementById('resDistance').textContent = distance;
         
         resultsSection.classList.remove('hidden');
     }
