@@ -32,6 +32,88 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const BACKEND_URL = 'https://niq.api.frudotz.com';
 
+    // Last Query Elements
+    const lastQuerySection = document.getElementById('lastQuerySection');
+    const lastQueryAddressText = document.getElementById('lastQueryAddressText');
+    const lastQuerySpeed = document.getElementById('lastQuerySpeed');
+    const lastQueryFiber = document.getElementById('lastQueryFiber');
+    const lastQueryDate = document.getElementById('lastQueryDate');
+    const lastQueryCard = document.getElementById('lastQueryCard');
+    const refreshLastQueryBtn = document.getElementById('refreshLastQueryBtn');
+
+    function renderLastQuery() {
+        const saved = localStorage.getItem('lastQuery');
+        if (!saved) {
+            lastQuerySection?.classList.add('hidden');
+            return;
+        }
+        try {
+            const savedData = JSON.parse(saved);
+            if(lastQueryAddressText) lastQueryAddressText.textContent = savedData.data.address?.text || 'Bilinmiyor';
+            if(lastQuerySpeed) lastQuerySpeed.textContent = `XDSL: ${savedData.data.port.speedLabel || 'Yok'}`;
+            if(lastQueryFiber) lastQueryFiber.textContent = `Fiber: ${savedData.data.fiber.maxSpeedLabel || 'Yok'}`;
+            if(lastQueryDate) lastQueryDate.textContent = savedData.date;
+            
+            lastQuerySection?.classList.remove('hidden');
+
+            const today = new Date().toISOString().split('T')[0];
+            if (savedData.date === today && savedData.hasRefreshedToday) {
+                if(refreshLastQueryBtn) {
+                    refreshLastQueryBtn.disabled = true;
+                    refreshLastQueryBtn.style.opacity = '0.3';
+                    refreshLastQueryBtn.title = "Günde sadece 1 kez güncelleyebilirsiniz.";
+                }
+            } else {
+                if(refreshLastQueryBtn) {
+                    refreshLastQueryBtn.disabled = false;
+                    refreshLastQueryBtn.style.opacity = '1';
+                    refreshLastQueryBtn.title = "Güncelle";
+                }
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    renderLastQuery();
+
+    if (refreshLastQueryBtn) {
+        refreshLastQueryBtn.addEventListener('click', async () => {
+            const saved = localStorage.getItem('lastQuery');
+            if (!saved) return;
+            const savedData = JSON.parse(saved);
+            
+            const turnstileToken = new FormData(form).get('cf-turnstile-response');
+            if (!turnstileToken) {
+                alert("Güncellemek için lütfen aşağıdaki formdan 'Ben robot değilim' doğrulamasını tamamlayın.");
+                document.querySelector('.cf-turnstile').scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+            
+            await doInfraQuery(savedData.bbk, savedData.il, turnstileToken, true);
+        });
+    }
+
+    if (lastQueryCard) {
+        lastQueryCard.addEventListener('click', () => {
+            const saved = localStorage.getItem('lastQuery');
+            if (!saved) return;
+            const savedData = JSON.parse(saved);
+            showResults(savedData.data);
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+
+    function showResults(infraData) {
+        document.getElementById('resXdslSpeed').textContent = infraData.port.speedLabel || 'Yok';
+        document.getElementById('resFiberSpeed').textContent = infraData.fiber.maxSpeedLabel || 'Yok';
+        document.getElementById('resExchange').textContent = infraData.exchange.name || 'Bilinmiyor';
+        document.getElementById('resAddress').textContent = infraData.address?.text || 'Bilinmiyor';
+        
+        resultsSection.classList.remove('hidden');
+    }
+
+
     async function fetchAddressData(level, id = null) {
         let url = `${BACKEND_URL}/?action=address&level=${level}`;
         if (id) url += `&id=${id}`;
@@ -137,13 +219,63 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
+    async function doInfraQuery(bbk, il, turnstileToken, isRefresh = false) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sorgulanıyor...';
+
+        try {
+            const res = await fetch(`${BACKEND_URL}/?action=infra&kapi=${bbk}&il=${il}`, {
+                headers: {
+                    'X-Turnstile-Token': turnstileToken
+                }
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showResults(data.data);
+                
+                // Save to localStorage
+                const today = new Date().toISOString().split('T')[0];
+                const existing = localStorage.getItem('lastQuery') ? JSON.parse(localStorage.getItem('lastQuery')) : {};
+                
+                localStorage.setItem('lastQuery', JSON.stringify({
+                    date: today,
+                    bbk: bbk,
+                    il: il,
+                    data: data.data,
+                    hasRefreshedToday: isRefresh ? true : existing.hasRefreshedToday && existing.bbk === bbk
+                }));
+                
+                renderLastQuery();
+                
+                if (!isRefresh) {
+                    resultsSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            } else {
+                if (data.isRateLimited) {
+                    alert('Limit Uyarısı: ' + data.error);
+                } else {
+                    alert('Sorgulama sırasında bir hata oluştu: ' + data.error);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Sunucuya bağlanılamadı. Lütfen internet bağlantınızı kontrol edin.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sorgula';
+            if (typeof turnstile !== 'undefined') {
+                turnstile.reset();
+            }
+        }
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const bbk = elApartment.value;
         const il = elProvince.value;
         
-        // Turnstile Tokenini Al
         const formData = new FormData(form);
         const turnstileToken = formData.get('cf-turnstile-response');
 
@@ -157,38 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Sorgulanıyor...';
-
-        try {
-            const res = await fetch(`${BACKEND_URL}/?action=infra&kapi=${bbk}&il=${il}`, {
-                headers: {
-                    'X-Turnstile-Token': turnstileToken
-                }
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                document.getElementById('resXdslSpeed').textContent = data.data.port.speedLabel || 'Yok';
-                document.getElementById('resFiberSpeed').textContent = data.data.fiber.maxSpeedLabel || 'Yok';
-                document.getElementById('resExchange').textContent = data.data.exchange.name || 'Bilinmiyor';
-                document.getElementById('resAddress').textContent = data.data.address?.text || 'Bilinmiyor';
-                
-                resultsSection.classList.remove('hidden');
-                resultsSection.scrollIntoView({ behavior: 'smooth' });
-            } else {
-                alert('Sorgulama sırasında bir hata oluştu: ' + data.error);
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Sunucuya bağlanılamadı. Lütfen Backend tarafının ayakta olduğundan emin olun.');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Sorgula';
-            // Turnstile'i bir sonraki sorgu için sıfırlayalım
-            if (typeof turnstile !== 'undefined') {
-                turnstile.reset();
-            }
-        }
+        await doInfraQuery(bbk, il, turnstileToken, false);
     });
 });

@@ -4,5 +4,11 @@
   "compatibility_date": "2026-04-08",
   "observability": {
     "enabled": true
-  }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "ALTYAPI_CACHE",
+      "id": "eab03e4822xxEXAMPLExx2b14441"
+    }
+  ]
 }

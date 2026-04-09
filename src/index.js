@@ -174,9 +174,53 @@ export default {
                     const il = url.searchParams.get('il');
                     if (!kapi || !il) throw new Error("Eksik parametreler: kapi ve il gerekli.");
 
+                    // 1. Önce KV Cache Kontrolü yapıyoruz (Eğer veri varsa kota düşmez)
+                    const cacheKey = `infra:${kapi}`;
+                    if (env.ALTYAPI_CACHE) {
+                        const cached = await env.ALTYAPI_CACHE.get(cacheKey, "json");
+                        if (cached) {
+                            return new Response(JSON.stringify({ success: true, data: cached, meta: { cached: true } }), {
+                                headers: { 'Content-Type': 'application/json', ...dynamicCors }
+                            });
+                        }
+                    }
+
+                    // 2. Kotalama (Rate Limiting) - Veri KV'de yoksa kontrol ediyoruz
+                    if (env.ALTYAPI_CACHE) {
+                        const today = new Date().toISOString().split('T')[0];
+                        const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+                        const globalKey = `quota:global:${today}`;
+                        const ipKey = `quota:ip:${ip}:${today}`;
+
+                        const globalCount = parseInt(await env.ALTYAPI_CACHE.get(globalKey)) || 0;
+                        if (globalCount >= 1024) {
+                            return new Response(JSON.stringify({ success: false, error: "Günlük sistem sorgu limitine ulaşıldı, lütfen yarın tekrar deneyin.", isRateLimited: true }), {
+                                status: 429, headers: { 'Content-Type': 'application/json', ...dynamicCors }
+                            });
+                        }
+
+                        const ipCount = parseInt(await env.ALTYAPI_CACHE.get(ipKey)) || 0;
+                        if (ipCount >= 12) {
+                            return new Response(JSON.stringify({ success: false, error: "Günlük IP sorgu limitinize ulaştınız (12/12).", isRateLimited: true }), {
+                                status: 429, headers: { 'Content-Type': 'application/json', ...dynamicCors }
+                            });
+                        }
+
+                        // Kotaları artır
+                        await env.ALTYAPI_CACHE.put(globalKey, (globalCount + 1).toString(), { expirationTtl: 86400 });
+                        await env.ALTYAPI_CACHE.put(ipKey, (ipCount + 1).toString(), { expirationTtl: 86400 });
+                    }
+
+                    // 3. Upstream API'den veriyi çek
                     const data = await fetchRealInfrastructure(kapi, il, env);
 
-                    return new Response(JSON.stringify({ success: true, data: data }), {
+                    // 4. KV Cache'e yaz
+                    if (env.ALTYAPI_CACHE && data) {
+                        // 24 saat (86400 saniye) önbellekte tut
+                        await env.ALTYAPI_CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: 86400 });
+                    }
+
+                    return new Response(JSON.stringify({ success: true, data: data, meta: { cached: false } }), {
                         headers: { 'Content-Type': 'application/json', ...dynamicCors },
                     });
                 }
