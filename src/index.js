@@ -1,19 +1,46 @@
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Max-Age': '86400',
-};
+const ALLOWED_ORIGINS = [
+    'https://frudotz.com',
+    'https://altyapi.frudotz.com',
+    'https://frudotz.github.io'
+];
+
+function getCorsHeaders(origin) {
+    const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : 'null';
+    return {
+        'Access-Control-Allow-Origin': allowed,
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Turnstile-Token',
+        'Access-Control-Max-Age': '86400',
+    };
+}
 
 function handleOptions(request) {
+    const origin = request.headers.get('Origin');
     if (
-        request.headers.get('Origin') !== null &&
+        origin !== null &&
         request.headers.get('Access-Control-Request-Method') !== null &&
         request.headers.get('Access-Control-Request-Headers') !== null
     ) {
-        return new Response(null, { headers: corsHeaders });
+        return new Response(null, { headers: getCorsHeaders(origin) });
     } else {
-        return new Response(null, { headers: { Allow: 'GET, POST, OPTIONS' } });
+        return new Response(null, { headers: { Allow: 'GET, POST, OPTIONS', ...getCorsHeaders(origin) } });
+    }
+}
+
+async function verifyTurnstile(token, secret) {
+    if (!token || !secret) return false;
+    const formData = new FormData();
+    formData.append('secret', secret);
+    formData.append('response', token);
+    try {
+        const result = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            body: formData,
+            method: 'POST',
+        });
+        const outcome = await result.json();
+        return outcome.success;
+    } catch(e) {
+        return false;
     }
 }
 
@@ -107,25 +134,52 @@ async function fetchRealInfrastructure(kapi, il, env) {
 
 export default {
     async fetch(request, env, ctx) {
+        const origin = request.headers.get('Origin');
+
+        // Sıkı Origin Kontrolü
+        if (request.method !== 'OPTIONS' && !ALLOWED_ORIGINS.includes(origin)) {
+            // Local testlerin (localhost v.b) de bloklanacağını unutmayın, sadece izin verilen alan adları!
+            return new Response(JSON.stringify({ success: false, error: "Erişim Reddedildi. (Forbidden Origin)" }), {
+                status: 403,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
         if (request.method === 'OPTIONS') return handleOptions(request);
 
         const url = new URL(request.url);
+        const dynamicCors = getCorsHeaders(origin);
 
         if (url.pathname === '/') {
             try {
                 const action = url.searchParams.get('action');
 
                 if (action === 'infra') {
+                    // Turnstile Verification İşlemi
+                    const turnstileToken = request.headers.get('X-Turnstile-Token');
+                    if (!env.TURNSTILE_SECRET) {
+                        return new Response(JSON.stringify({ success: false, error: "TURNSTILE_SECRET yapılandırılmamış." }), {
+                            status: 500, headers: { 'Content-Type': 'application/json', ...dynamicCors }
+                        });
+                    }
+
+                    const isBotValid = await verifyTurnstile(turnstileToken, env.TURNSTILE_SECRET);
+                    if (!isBotValid) {
+                        return new Response(JSON.stringify({ success: false, error: "Bot doğrulaması başarısız oldu." }), {
+                            status: 403, headers: { 'Content-Type': 'application/json', ...dynamicCors }
+                        });
+                    }
+
                     const kapi = url.searchParams.get('kapi');
                     const il = url.searchParams.get('il');
                     if (!kapi || !il) throw new Error("Eksik parametreler: kapi ve il gerekli.");
-
+                    
                     const data = await fetchRealInfrastructure(kapi, il, env);
-
+                    
                     return new Response(JSON.stringify({ success: true, data: data }), {
-                        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+                        headers: { 'Content-Type': 'application/json', ...dynamicCors },
                     });
-                }
+                } 
                 else if (action === 'address') {
                     if (!env.ADDRESS_SOURCE) throw new Error("ADDRESS_SOURCE yapılandırılmamış.");
 
@@ -174,27 +228,27 @@ export default {
                     // Bina listelerinde data tipleri kod ve ad yerine, kimilerinde kapiNo dönebilir vs.
                     // Şimdilik gelen JSON'u ham haliyle beraber cleanList olarak basıyoruz
                     return new Response(JSON.stringify({ success: true, data: cleanList, raw: list }), {
-                        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+                        headers: { 'Content-Type': 'application/json', ...dynamicCors },
                     });
                 }
                 else {
                     return new Response(JSON.stringify({ success: false, error: "Geçersiz action." }), {
                         status: 400,
-                        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+                        headers: { 'Content-Type': 'application/json', ...dynamicCors },
                     });
                 }
 
             } catch (err) {
                 return new Response(JSON.stringify({ success: false, error: err.message }), {
                     status: 500,
-                    headers: { 'Content-Type': 'application/json', ...corsHeaders },
+                    headers: { 'Content-Type': 'application/json', ...dynamicCors },
                 });
             }
         }
 
         return new Response(JSON.stringify({ success: false, error: "Not Found" }), {
             status: 404,
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+            headers: { 'Content-Type': 'application/json', ...dynamicCors },
         });
     },
 };

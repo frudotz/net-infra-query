@@ -142,9 +142,18 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const bbk = elApartment.value;
         const il = elProvince.value;
+        
+        // Turnstile Tokenini Al
+        const formData = new FormData(form);
+        const turnstileToken = formData.get('cf-turnstile-response');
 
         if (!bbk || !il) {
             alert("Lütfen tüm adres adımlarını tamamlayıp daire seçin.");
+            return;
+        }
+
+        if (!turnstileToken) {
+            alert("Lütfen bot olmadığınızı doğrulamak için kutucuğu işaretleyin.");
             return;
         }
 
@@ -152,7 +161,11 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.textContent = 'Sorgulanıyor...';
 
         try {
-            const res = await fetch(`${BACKEND_URL}/?action=infra&kapi=${bbk}&il=${il}`);
+            const res = await fetch(`${BACKEND_URL}/?action=infra&kapi=${bbk}&il=${il}`, {
+                headers: {
+                    'X-Turnstile-Token': turnstileToken
+                }
+            });
             const data = await res.json();
 
             if (data.success) {
@@ -172,6 +185,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Sorgula';
+            // Turnstile'i bir sonraki sorgu için sıfırlayalım
+            if (typeof turnstile !== 'undefined') {
+                turnstile.reset();
+            }
         }
     });
 });
