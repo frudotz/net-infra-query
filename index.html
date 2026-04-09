@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="tr" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/index.css">
 </head>
+
 <body>
     <div class="bg-mesh"></div>
     <div class="container">
@@ -26,7 +28,7 @@
             <section class="glass-card query-section">
                 <h2>Altyapınızı Sorgulayın</h2>
                 <p>Adres bilginizi seçerek internet altyapınızın desteklediği maksimum hızı öğrenin.</p>
-                
+
                 <form id="infrastructureForm" class="form-grid">
                     <div class="form-group">
                         <label for="province">İl</label>
@@ -34,42 +36,42 @@
                             <option value="">Yükleniyor...</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="district">İlçe</label>
                         <select id="district" disabled>
-                            <option value="">İl Seçiniz...</option>
+                            <option value="">İlçe Seçiniz...</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label for="neighborhood">Mahalle</label>
                         <select id="neighborhood" disabled>
-                            <option value="">İlçe Seçiniz...</option>
+                            <option value="">Mahalle Seçiniz...</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label for="street">Sokak/Cadde</label>
                         <select id="street" disabled>
-                            <option value="">Mahalle Seçiniz...</option>
+                            <option value="">Sokak/Cadde Seçiniz...</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label for="building">Bina</label>
                         <select id="building" disabled>
-                            <option value="">Sokak Seçiniz...</option>
+                            <option value="">Bina Seçiniz...</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label for="apartment">Daire / İç Kapı</label>
                         <select id="apartment" disabled>
-                            <option value="">Bina Seçiniz...</option>
+                            <option value="">Daire No. Seçiniz...</option>
                         </select>
                     </div>
-                    
+
                     <button type="submit" class="btn-primary" id="submitBtn">Sorgula</button>
                 </form>
             </section>
@@ -88,7 +90,7 @@
                             <strong class="stat-value" id="resXdslSpeed">-</strong>
                         </div>
                     </div>
-                    
+
                     <div class="stat-card highlight">
                         <span class="stat-icon">🚀</span>
                         <div class="stat-info">
@@ -111,4 +113,5 @@
 
     <script src="js/app.js"></script>
 </body>
+
 </html>
