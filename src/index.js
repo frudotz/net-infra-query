@@ -9,7 +9,7 @@ function getCorsHeaders(origin) {
     return {
         'Access-Control-Allow-Origin': allowed,
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Turnstile-Token',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Turnstile-Token, Cf-Access-Jwt-Assertion',
         'Access-Control-Max-Age': '86400',
     };
 }
@@ -43,6 +43,70 @@ async function verifyTurnstile(token, secret) {
         return false;
     }
 }
+
+// --- Cloudflare Access Security ---
+function base64UrlDecode(str) {
+    str = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (str.length % 4) str += '=';
+    return atob(str);
+}
+
+async function verifyAccessJwt(token, env) {
+    if (!token) return false;
+    
+    // Değişkenler ENV üzerinden gelmeli
+    const aud = env.ACCESS_AUD;
+    const certsUrl = env.ACCESS_CERTS_URL;
+    
+    if (!aud || !certsUrl) {
+        console.error("ACCESS_AUD veya ACCESS_CERTS_URL ortam değişkenleri eksik.");
+        return false;
+    }
+    
+    try {
+        const [headerB64, payloadB64, signatureB64] = token.split('.');
+        const header = JSON.parse(base64UrlDecode(headerB64));
+        const payload = JSON.parse(base64UrlDecode(payloadB64));
+
+        // 1. Audience kontrolü
+        if (payload.aud !== aud) return false;
+
+        // 2. Expiration kontrolü
+        const now = Math.floor(Date.now() / 1000);
+        if (payload.exp < now) return false;
+
+        // 3. Sertifika fetch (JWKS)
+        const certsRes = await fetch(certsUrl);
+        const { keys } = await certsRes.json();
+        
+        // kid eşleşmesi
+        const jwk = keys.find(k => k.kid === header.kid);
+        if (!jwk) return false;
+
+        // 4. İmza doğrulaması (RS256)
+        const key = await crypto.subtle.importKey(
+            "jwk",
+            jwk,
+            { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+            false,
+            ["verify"]
+        );
+
+        const encoder = new TextEncoder();
+        const data = encoder.encode(`${headerB64}.${payloadB64}`);
+        const signature = new Uint8Array(base64UrlDecode(signatureB64).split('').map(c => c.charCodeAt(0)));
+
+        return await crypto.subtle.verify(
+            "RSASSA-PKCS1-v1_5",
+            key,
+            signature,
+            data
+        );
+    } catch (e) {
+        return false;
+    }
+}
+// ----------------------------------
 
 function formatSpeed(kbps) {
     if (!kbps || kbps <= 0) return null;
@@ -155,6 +219,16 @@ export default {
                 const action = url.searchParams.get('action');
 
                 if (action === 'infra') {
+                    // --- Cloudflare Access Doğrulaması ---
+                    const accessJwt = request.headers.get('Cf-Access-Jwt-Assertion');
+                    const isAccessValid = await verifyAccessJwt(accessJwt, env);
+                    if (!isAccessValid) {
+                        return new Response(JSON.stringify({ success: false, error: "Cloudflare Access yetkilendirmesi başarısız." }), {
+                            status: 401, headers: { 'Content-Type': 'application/json', ...dynamicCors }
+                        });
+                    }
+                    // -------------------------------------
+
                     // Turnstile Verification İşlemi
                     const turnstileToken = request.headers.get('X-Turnstile-Token');
                     if (!env.TURNSTILE_SECRET) {
