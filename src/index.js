@@ -103,29 +103,28 @@ async function fetchRealInfrastructure(kapi, il, env) {
         } catch (e) { }
     }
 
-    // API yapısına uygun haritalama
-    const data = upstream?.altyapi?.data || {};
+    // Altyapı tipi tespiti (Fiber, VDSL2, ADSL vb.)
+    // data.altyapi genellikle "Hiper (FIBER)" veya "VDSL2" gibi döner.
+    let infraType = data.altyapi || 'Bilinmiyor';
+    const isFiber = infraType.toUpperCase().includes('FIBER');
+    
+    if (isFiber) infraType = 'Fiber';
+    else if (infraType.toUpperCase().includes('VDSL')) infraType = 'VDSL';
+    else if (infraType.toUpperCase().includes('ADSL')) infraType = 'ADSL';
 
-    // FTTH, FTTB, FIBER vs kontrolü
-    const isFiber = typeof data.altyapi === 'string' && data.altyapi.toUpperCase().includes('FIBER');
     const speedKbps = parseInt(data.max_hiz, 10) || null;
-    const portStatus = data.bos_port ? "available" : "occupied";
+    const portStatus = data.bos_port ? "Var" : "Yok";
+
+    // Fiber ise hızı kullanıcı isteğiyle 1000 Mbps olarak öne çıkabilir,
+    // ama API'den gelen hızı da koruyalım
+    let displaySpeed = formatSpeed(speedKbps) || (isFiber ? '1000 Mbps' : 'Belirsiz');
 
     return {
-        port: {
-            status: portStatus,
-            speedKbps: isFiber ? null : speedKbps,
-            speedLabel: (!isFiber && speedKbps) ? formatSpeed(speedKbps) : (portStatus === 'available' ? 'Var' : 'Yok'),
-        },
-        exchange: {
-            name: data.altyapi || 'Bilinmiyor', // API'de santral ismi dönmüyor ama altyapı tipi dönüyor. Santral adını altyapı tipi olarak gösterebiliriz.
-            distanceM: parseInt(data.santral_mesafe, 10) || null,
-        },
-        fiber: {
-            available: isFiber,
-            maxSpeedKbps: isFiber ? speedKbps : null,
-            maxSpeedLabel: isFiber ? formatSpeed(speedKbps) : 'Yok',
-        },
+        type: infraType,
+        portStatus: portStatus,
+        maxSpeed: displaySpeed,
+        distance: data.santral_mesafe ? `${data.santral_mesafe} Metre` : 'Belirsiz',
+        bbk: kapi,
         address: {
             text: acikAdresText
         }

@@ -49,9 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         try {
             const savedData = JSON.parse(saved);
-            if(lastQueryAddressText) lastQueryAddressText.textContent = savedData.data.address?.text || 'Bilinmiyor';
-            if(lastQuerySpeed) lastQuerySpeed.textContent = `XDSL: ${savedData.data.port.speedLabel || 'Yok'}`;
-            if(lastQueryFiber) lastQueryFiber.textContent = `Fiber: ${savedData.data.fiber.maxSpeedLabel || 'Yok'}`;
+            const d = savedData.data;
+
+            if(lastQueryAddressText) lastQueryAddressText.textContent = d.address?.text || 'Bilinmiyor';
+            // Son sorgu kartında Tür ve Hız bilgisini yan yana gösterelim
+            if(lastQuerySpeed) lastQuerySpeed.textContent = `Tür: ${d.type || '-'}`;
+            if(lastQueryFiber) lastQueryFiber.textContent = `Hız: ${d.maxSpeed || '-'}`;
             if(lastQueryDate) lastQueryDate.textContent = savedData.date;
             
             lastQuerySection?.classList.remove('hidden');
@@ -105,10 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showResults(infraData) {
-        document.getElementById('resXdslSpeed').textContent = infraData.port.speedLabel || 'Yok';
-        document.getElementById('resFiberSpeed').textContent = infraData.fiber.maxSpeedLabel || 'Yok';
-        document.getElementById('resExchange').textContent = infraData.exchange.name || 'Bilinmiyor';
+        document.getElementById('resBbk').textContent = infraData.bbk || '-';
         document.getElementById('resAddress').textContent = infraData.address?.text || 'Bilinmiyor';
+        
+        document.getElementById('resType').textContent = infraData.type || '-';
+        document.getElementById('resPort').textContent = infraData.portStatus || '-';
+        document.getElementById('resSpeed').textContent = infraData.maxSpeed || '-';
+        document.getElementById('resDistance').textContent = infraData.distance || '-';
         
         resultsSection.classList.remove('hidden');
     }

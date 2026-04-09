@@ -104,39 +104,52 @@
             </section>
             <section id="resultsSection" class="glass-card result-section hidden">
                 <div class="result-header">
-                    <h3>Sonuçlar</h3>
-                    <div class="badge success">Kullanılabilir</div>
+                    <h3>Sorgu Sonuçları</h3>
+                    <div class="badge success">Sorgulama Başarılı</div>
                 </div>
 
                 <div class="address-container"
-                    style="margin-bottom: 20px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.9em;">
-                    <span class="stat-icon" style="font-size: 1.2em; vertical-align: middle;">📍</span>
-                    <span id="resAddress" style="vertical-align: middle; margin-left: 8px;">Adres Bilgisi
-                        Yükleniyor...</span>
+                    style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px;">
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                        <span style="background: var(--clr-primary); color: #000; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">BBK</span>
+                        <strong id="resBbk" style="color: var(--clr-primary); font-size: 1.1rem; letter-spacing: 1px;">-</strong>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <span class="stat-icon" style="font-size: 1.2rem; padding: 5px;">📍</span>
+                        <span id="resAddress" style="font-size: 0.95rem; line-height: 1.4; color: var(--text-1);">Adres Bilgisi Yükleniyor...</span>
+                    </div>
                 </div>
 
                 <div class="infrastructure-grid">
                     <div class="stat-card">
+                        <span class="stat-icon">🌍</span>
+                        <div class="stat-info">
+                            <span class="stat-label">Altyapı Türü</span>
+                            <strong class="stat-value" id="resType">-</strong>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
                         <span class="stat-icon">📥</span>
                         <div class="stat-info">
-                            <span class="stat-label">XDSL Port Hızı</span>
-                            <strong class="stat-value" id="resXdslSpeed">-</strong>
+                            <span class="stat-label">Boş Port</span>
+                            <strong class="stat-value" id="resPort">-</strong>
                         </div>
                     </div>
 
                     <div class="stat-card highlight">
                         <span class="stat-icon">🚀</span>
                         <div class="stat-info">
-                            <span class="stat-label">Fiber Hızı</span>
-                            <strong class="stat-value" id="resFiberSpeed">-</strong>
+                            <span class="stat-label">Maksimum Hız</span>
+                            <strong class="stat-value" id="resSpeed">-</strong>
                         </div>
                     </div>
 
                     <div class="stat-card">
                         <span class="stat-icon">🏢</span>
                         <div class="stat-info">
-                            <span class="stat-label">Santral</span>
-                            <strong class="stat-value" id="resExchange">-</strong>
+                            <span class="stat-label">Santral Mesafe</span>
+                            <strong class="stat-value" id="resDistance">-</strong>
                         </div>
                     </div>
                 </div>
