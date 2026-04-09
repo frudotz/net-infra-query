@@ -60,33 +60,28 @@ async function fetchRealInfrastructure(kapi, il, env) {
     const raw = await fetchTarget(url, env, { method: "GET" });
     const upstream = await raw.json();
 
-    // Map upstream values
-    const xdsl = upstream?.xDSL || {};
-    const fiber = upstream?.fiber || {};
-
-    const PORT_STATUS_MAP = {
-        "BOŞ": "available",
-        "DOLU": "occupied",
-        "ARIZA": "faulty",
-        "KAPALI": "closed",
-        "YOK": "unknown",
-        "VAR": "available"
-    };
+    // Netinternet API yapısına uygun haritalama
+    const data = upstream?.altyapi?.data || {};
+    
+    // FTTH, FTTB, FIBER vs kontrolü
+    const isFiber = typeof data.altyapi === 'string' && data.altyapi.toUpperCase().includes('FIBER');
+    const speedKbps = parseInt(data.max_hiz, 10) || null;
+    const portStatus = data.bos_port ? "available" : "occupied";
 
     return {
         port: {
-            status: PORT_STATUS_MAP[xdsl.port_durumu] ?? (xdsl.port_durumu ? "occupied" : "unknown"), // Varsayım
-            speedKbps: parseInt(xdsl.hiz, 10) || null,
-            speedLabel: formatSpeed(parseInt(xdsl.hiz, 10)),
+            status: portStatus,
+            speedKbps: isFiber ? null : speedKbps, 
+            speedLabel: (!isFiber && speedKbps) ? formatSpeed(speedKbps) : (portStatus === 'available' ? 'Var' : 'Yok'),
         },
         exchange: {
-            name: xdsl.santral || null,
-            distanceM: parseInt(xdsl.mesafe, 10) || null,
+            name: data.altyapi || 'Bilinmiyor', // API'de santral ismi dönmüyor ama altyapı tipi dönüyor. Santral adını altyapı tipi olarak gösterebiliriz.
+            distanceM: parseInt(data.santral_mesafe, 10) || null,
         },
         fiber: {
-            available: fiber.gpon === "VAR", // veya fiber.fttx_vDSL gibi kontrol, apisine gore
-            maxSpeedKbps: parseInt(fiber.hiz, 10) || null,
-            maxSpeedLabel: formatSpeed(parseInt(fiber.hiz, 10)),
+            available: isFiber,
+            maxSpeedKbps: isFiber ? speedKbps : null,
+            maxSpeedLabel: isFiber ? formatSpeed(speedKbps) : 'Yok',
         }
     };
 }
