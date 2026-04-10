@@ -103,43 +103,52 @@ async function fetchRealInfrastructure(kapi, il, env) {
         } catch (e) { }
     }
 
-    // Altyapı tipi tespiti (Fiber, VDSL2, ADSL vb.)
-    // data.altyapi genellikle "Hiper (FIBER)" veya "VDSL2" gibi döner.
-    let infraType = data.altyapi || 'Bilinmiyor';
-    // Gelen verinin tipini güvene almak için string'e çeviriyoruz if object/array
-    if (typeof infraType !== 'string') {
-        if (typeof infraType === 'object' && infraType !== null) {
-            infraType = JSON.stringify(infraType);
-        } else {
-            infraType = String(infraType);
+    const extractStr = (val) => {
+        if (val == null) return null;
+        if (typeof val === 'string' || typeof val === 'number') return String(val);
+        if (Array.isArray(val)) return val.length > 0 ? extractStr(val[0]) : null;
+        if (typeof val === 'object') {
+            // Find any meaningful value inside the object (like _text, 0, $, etc)
+            const keys = Object.keys(val);
+            if (keys.length > 0) return extractStr(val[keys[0]]);
+            return null;
         }
-    }
-    const isFiber = infraType.toUpperCase().includes('FIBER');
+        return String(val);
+    };
+
+    let infraTypeStr = extractStr(data.altyapi) || 'Bilinmiyor';
+    const isFiber = infraTypeStr.toUpperCase().includes('FIBER');
     
+    let infraType = infraTypeStr;
     if (isFiber) {
         infraType = 'Fiber';
-    } else if (infraType.toUpperCase().includes('VDSL')) {
+    } else if (infraTypeStr.toUpperCase().includes('VDSL')) {
         infraType = 'VDSL';
-    } else if (infraType.toUpperCase().includes('ADSL')) {
+    } else if (infraTypeStr.toUpperCase().includes('ADSL')) {
         infraType = 'ADSL';
     }
 
-    const speedKbps = parseInt(data.max_hiz, 10) || null;
-    const portStatus = data.bos_port ? "Var" : "Yok";
+    const rawMaxHiz = extractStr(data.max_hiz);
+    const speedKbps = rawMaxHiz ? parseInt(rawMaxHiz, 10) : null;
+    
+    const rawBosPort = extractStr(data.bos_port);
+    const portStatus = (rawBosPort && (rawBosPort === '1' || rawBosPort.toLowerCase() === 'true' || rawBosPort.toLowerCase() === 'var' || rawBosPort.toLowerCase().includes('yes'))) ? "Var" : "Yok";
 
-    // Fiber ise hızı kullanıcı isteğiyle 1000 Mbps olarak öne çıkabilir,
-    // ama API'den gelen hızı da koruyalım
     let displaySpeed = formatSpeed(speedKbps) || (isFiber ? '1000 Mbps' : 'Belirsiz');
+
+    const rawMesafe = extractStr(data.santral_mesafe);
+    let distanceStr = rawMesafe ? `${rawMesafe} Metre` : 'Belirsiz';
 
     return {
         type: infraType,
         portStatus: portStatus,
         maxSpeed: displaySpeed,
-        distance: data.santral_mesafe ? `${data.santral_mesafe} Metre` : 'Belirsiz',
+        distance: distanceStr,
         bbk: kapi,
         address: {
             text: acikAdresText
-        }
+        },
+        _raw: data // For debugging if needed in the response
     };
 }
 
