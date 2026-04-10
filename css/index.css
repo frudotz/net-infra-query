@@ -93,7 +93,9 @@ header {
     font-weight: 700;
     background: linear-gradient(135deg, var(--clr-primary), var(--clr-secondary));
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
+    color: transparent;
 }
 
 .btn-icon {
