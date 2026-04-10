@@ -103,20 +103,10 @@ async function fetchRealInfrastructure(kapi, il, env) {
         } catch (e) { }
     }
 
-    const extractStr = (val) => {
-        if (val == null) return null;
-        if (typeof val === 'string' || typeof val === 'number') return String(val);
-        if (Array.isArray(val)) return val.length > 0 ? extractStr(val[0]) : null;
-        if (typeof val === 'object') {
-            // Find any meaningful value inside the object (like _text, 0, $, etc)
-            const keys = Object.keys(val);
-            if (keys.length > 0) return extractStr(val[keys[0]]);
-            return null;
-        }
-        return String(val);
-    };
+    // API yanıtındaki asıl veriler data.altyapi.data içinde geliyor
+    const infra = data?.altyapi?.data || data;
 
-    let infraTypeStr = extractStr(data.altyapi) || 'Bilinmiyor';
+    let infraTypeStr = String(infra.altyapi || 'Bilinmiyor');
     const isFiber = infraTypeStr.toUpperCase().includes('FIBER');
     
     let infraType = infraTypeStr;
@@ -128,16 +118,27 @@ async function fetchRealInfrastructure(kapi, il, env) {
         infraType = 'ADSL';
     }
 
-    const rawMaxHiz = extractStr(data.max_hiz);
-    const speedKbps = rawMaxHiz ? parseInt(rawMaxHiz, 10) : null;
+    const speedKbps = infra.max_hiz ? parseInt(infra.max_hiz, 10) : null;
     
-    const rawBosPort = extractStr(data.bos_port);
-    const portStatus = (rawBosPort && (rawBosPort === '1' || rawBosPort.toLowerCase() === 'true' || rawBosPort.toLowerCase() === 'var' || rawBosPort.toLowerCase().includes('yes'))) ? "Var" : "Yok";
+    let portStatus = "Yok";
+    if (infra.bos_port !== undefined && infra.bos_port !== null) {
+        const bp = String(infra.bos_port).toLowerCase();
+        if (bp === 'true' || bp === '1' || bp === 'var' || bp.includes('yes')) {
+            portStatus = "Var";
+        }
+    }
 
-    let displaySpeed = formatSpeed(speedKbps) || (isFiber ? '1000 Mbps' : 'Belirsiz');
+    let displaySpeed = formatSpeed(speedKbps);
+    if (!displaySpeed) {
+        displaySpeed = isFiber ? '1000 Mbps' : 'Belirsiz';
+    }
 
-    const rawMesafe = extractStr(data.santral_mesafe);
-    let distanceStr = rawMesafe ? `${rawMesafe} Metre` : 'Belirsiz';
+    // Mesafe
+    let distanceStr = 'Belirsiz';
+    if (infra.santral_mesafe !== undefined && infra.santral_mesafe !== null) {
+        // Eğer fiber ise veya mesafe 0 ise gösterim tercihi size kalmış ancak 0 Metre mantıklıdır.
+        distanceStr = `${infra.santral_mesafe} Metre`;
+    }
 
     return {
         type: infraType,
