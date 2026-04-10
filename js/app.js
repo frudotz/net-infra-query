@@ -22,6 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsSection = document.getElementById('resultsSection');
     const submitBtn = document.getElementById('submitBtn');
 
+    const mapToggleBtn = document.getElementById('mapToggleBtn');
+    const mapWrapper = document.getElementById('mapWrapper');
+    const mapScoreText = document.getElementById('mapScoreText');
+    const geoLocateBtn = document.getElementById('geoLocateBtn');
+    let leafletMap = null;
+    let leafletMarker = null;
+
     // Dropdowns
     const elProvince = document.getElementById('province');
     const elDistrict = document.getElementById('district');
@@ -30,7 +37,220 @@ document.addEventListener('DOMContentLoaded', () => {
     const elBuilding = document.getElementById('building');
     const elApartment = document.getElementById('apartment');
 
-    const BACKEND_URL = 'https://niq.api.frudotz.com';
+    const BACKEND_URL = 'https://niq.api.frudotz.com'; // Use your backend url
+
+    function levenshtein(a, b) {
+        const matrix = [];
+        let i, j;
+        if (a.length == 0) return b.length;
+        if (b.length == 0) return a.length;
+        for (i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+        for (j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+        for (i = 1; i <= b.length; i++) {
+            for (j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) == a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+                }
+            }
+        }
+        return matrix[b.length][a.length];
+    }
+    
+    function normalizeStr(str) {
+        if (!str) return '';
+        return str.replace(/İ/g, 'I').replace(/ı/g, 'i').toLowerCase()
+                  .replace(/mah(\.|allesi)?/ig, '')
+                  .replace(/sok(\.|ağı|agi)?/ig, '')
+                  .replace(/cad(\.|desi)?/ig, '')
+                  .replace(/bulv(\.|arı|ari)?/ig, '')
+                  .replace(/\s+/g, ' ').trim();
+    }
+    
+    function findBestMatch(targetStr, optionsArray) {
+        let bestMatch = null;
+        let minDistance = Infinity;
+        const targetNorm = normalizeStr(targetStr);
+        
+        for (let opt of optionsArray) {
+            const text = opt.name || opt.ad || opt.kapiNo || opt.binaNo || '';
+            const optNorm = normalizeStr(text);
+            if(!optNorm) continue;
+            
+            if (optNorm === targetNorm) {
+                bestMatch = opt;
+                minDistance = 0;
+                break;
+            }
+            
+            const dist = levenshtein(targetNorm, optNorm);
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestMatch = opt;
+            }
+        }
+        
+        const maxLength = Math.max(targetNorm.length, bestMatch ? normalizeStr(bestMatch.name || bestMatch.ad || '').length : 1);
+        const score = Math.max(0, 100 - Math.round((minDistance / maxLength) * 100));
+        return { match: bestMatch, score, minDistance };
+    }
+
+    async function handleGeocode(lat, lon) {
+        try {
+            if(mapScoreText) mapScoreText.textContent = 'Aranıyor...';
+            const res = await fetch(`${BACKEND_URL}/?action=geocode&lat=${lat}&lon=${lon}`);
+            const data = await res.json();
+            
+            if (data.success && data.data.address) {
+                const addr = data.data.address;
+                const provinceName = addr.province || addr.state || addr.city;
+                const districtName = addr.town || addr.county || addr.district || addr.suburb || addr.city_district;
+                const neighborhoodName = addr.neighbourhood || addr.suburb || addr.quarter;
+                const roadName = addr.road;
+                const houseNo = addr.house_number;
+                
+                let totalScore = 0;
+                let checks = 0;
+                
+                if (provinceName) {
+                    let provOpts = [];
+                    // wait for province to be loaded
+                    let waits = 0;
+                    while (elProvince.options.length <= 1 && waits < 20) {
+                        await new Promise(r => setTimeout(r, 100)); waits++;
+                    }
+                    if (elProvince.options.length > 1) {
+                        provOpts = Array.from(elProvince.options).slice(1).map(o => ({ id: o.value, name: o.textContent }));
+                    }
+
+                    const matchRes = findBestMatch(provinceName, provOpts);
+                    if (matchRes.match && matchRes.score > 40) {
+                        elProvince.value = matchRes.match.id;
+                        totalScore += matchRes.score; checks++;
+                        
+                        if (districtName) {
+                            resetDropdown(elDistrict, 'Yükleniyor...');
+                            const listD = await fetchAddressData('district', matchRes.match.id);
+                            populateDropdown(elDistrict, listD, 'İlçe Seçiniz...');
+                            
+                            const dMatch = findBestMatch(districtName, listD);
+                            if (dMatch.match && dMatch.score > 40) {
+                                elDistrict.value = dMatch.match.id;
+                                totalScore += dMatch.score; checks++;
+                                
+                                if (neighborhoodName) {
+                                    resetDropdown(elNeighborhood, 'Yükleniyor...');
+                                    const listN = await fetchAddressData('neighborhood', dMatch.match.id);
+                                    populateDropdown(elNeighborhood, listN, 'Mahalle Seçiniz...');
+                                    
+                                    const nMatch = findBestMatch(neighborhoodName, listN);
+                                    if (nMatch.match && nMatch.score > 40) {
+                                        elNeighborhood.value = nMatch.match.id;
+                                        totalScore += nMatch.score; checks++;
+                                        
+                                        if (roadName) {
+                                            resetDropdown(elStreet, 'Yükleniyor...');
+                                            const listS = await fetchAddressData('street', nMatch.match.id);
+                                            populateDropdown(elStreet, listS, 'Sokak Seçiniz...');
+                                            
+                                            const sMatch = findBestMatch(roadName, listS);
+                                            if (sMatch.match && sMatch.score > 40) {
+                                                elStreet.value = sMatch.match.id;
+                                                totalScore += sMatch.score; checks++;
+                                                
+                                                resetDropdown(elBuilding, 'Yükleniyor...');
+                                                const listB = await fetchAddressData('building', sMatch.match.id);
+                                                populateDropdown(elBuilding, listB, 'Bina Seçiniz...');
+                                                
+                                                if (houseNo) {
+                                                    const bMatch = findBestMatch(houseNo, listB);
+                                                    if (bMatch.match && bMatch.score > 70) {
+                                                        elBuilding.value = bMatch.match.id;
+                                                        resetDropdown(elApartment, 'Yükleniyor...');
+                                                        const listA = await fetchAddressData('apartment', bMatch.match.id);
+                                                        populateDropdown(elApartment, listA, 'Daire Seçiniz...');
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                const finalScore = checks > 0 ? Math.round(totalScore / checks) : 0;
+                if(mapScoreText) {
+                    mapScoreText.textContent = `%${finalScore}`;
+                    mapScoreText.style.color = finalScore < 60 ? 'var(--clr-secondary)' : 'var(--clr-success)';
+                }
+            } else {
+                if(mapScoreText) mapScoreText.textContent = 'Adres Bulunamadı';
+            }
+        } catch(e) {
+            console.error(e);
+            if(mapScoreText) mapScoreText.textContent = 'Hata';
+        }
+    }
+
+    function initMap() {
+        if (leafletMap || typeof L === 'undefined') return;
+        
+        leafletMap = L.map('map').setView([39.92077, 32.85411], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(leafletMap);
+
+        leafletMarker = L.marker([39.92077, 32.85411], {draggable: true}).addTo(leafletMap);
+        
+        leafletMarker.on('dragend', function (e) {
+            const coords = e.target.getLatLng();
+            handleGeocode(coords.lat, coords.lng);
+        });
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                leafletMap.setView([lat, lng], 16);
+                leafletMarker.setLatLng([lat, lng]);
+                handleGeocode(lat, lng);
+            }, err => console.warn("GPS reddedildi"));
+        }
+    }
+
+    if (mapToggleBtn) {
+        mapToggleBtn.addEventListener('click', () => {
+            if (mapWrapper.classList.contains('hidden')) {
+                mapWrapper.classList.remove('hidden');
+                initMap();
+                setTimeout(() => {
+                    leafletMap.invalidateSize();
+                }, 200);
+            } else {
+                mapWrapper.classList.add('hidden');
+            }
+        });
+    }
+
+    if (geoLocateBtn) {
+        geoLocateBtn.addEventListener('click', () => {
+            if (navigator.geolocation && leafletMap && leafletMarker) {
+                mapScoreText.textContent = 'Konum aranıyor...';
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    leafletMap.setView([lat, lng], 16);
+                    leafletMarker.setLatLng([lat, lng]);
+                    handleGeocode(lat, lng);
+                }, err => {
+                    alert('Konum alınamadı, izinleri kontrol edin.');
+                });
+            }
+        });
+    }
 
     // Last Query Elements
     const lastQuerySection = document.getElementById('lastQuerySection');

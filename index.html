@@ -8,7 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 
@@ -45,7 +46,11 @@
         </div>
 
         <main>
-            <section class="glass-card query-section">
+            <section class="glass-card query-section" style="position: relative;">
+                <button id="mapToggleBtn" class="btn-icon" aria-label="Haritadan Seç" title="Haritadan Seç"
+                    style="position: absolute; right: 1.5rem; top: 1.5rem; font-size: 1.5rem; width: 45px; height: 45px; border-radius: 50%; background: var(--glass-bg); border: 1px solid var(--glass-border); box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: var(--clr-primary); z-index: 10;">
+                    📍
+                </button>
                 <h2 style="font-size: 1.5em; margin-bottom: 0.5rem; color: var(--text-main);">Altyapınızı Sorgulayın
                 </h2>
                 <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95em;">Adres bilginizi seçerek
@@ -57,6 +62,14 @@
                             d="M256 0c-2.4 0-4.8 .6-6.9 1.8l-224 128C10.6 138.1 0 154.1 0 171.4l0 100.6c0 142.3 84.8 268.4 213.1 319.4c13.7 5.4 28.7 8.1 43.8 8.1c.3 0 .6 0 .9 0l0-169.5 0-96L463.3 226c-17.4-44.4-44.5-83.3-78.6-114L262.9 1.8C260.8 .6 258.4 0 256 0zM512 301.7v-12.7c0-11-2-21.7-5.8-31.9l-132.5 75.7c-9 5.1-20.7 5.1-29.7 0L140 216.2 364 88.3l138.8 79.4c5.9 13.9 9.2 29 9.2 44.8v89.2c0 23.3-4.1 46.2-11.9 67.8L375.3 298.5c10.4-13.8 16.7-30.8 16.7-49V164.7c0-14.8-12-26.7-26.7-26.7s-26.7 12-26.7 26.7v84.8c0 30-24.3 54.3-54.3 54.3s-54.3-24.3-54.3-54.3V164.7c0-14.8-12-26.7-26.7-26.7s-26.7 12-26.7 26.7v84.8c0 23.2 14.5 43.1 35 51L108 422C41.2 338.9 0 236 0 131.7v-25c0-14.8 12-26.7 26.7-26.7h458.7c14.8 0 26.7 12 26.7 26.7v195.1z" />
                     </svg>
                     Hız limiti ve captcha doğrulaması aktif.
+                </div>
+
+                <div id="mapWrapper" class="hidden" style="margin-bottom: 20px; transition: all 0.3s ease;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.9em; color: var(--text-muted);">Bulunan Adres Puanı: <strong id="mapScoreText" style="color: var(--clr-primary);">%0</strong></span>
+                        <button type="button" id="geoLocateBtn" style="background: none; border: 1px solid var(--clr-primary); color: var(--clr-primary); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8em; font-weight: 600;">GPS Koordinatımı Bul</button>
+                    </div>
+                    <div id="map" style="width: 100%; height: 300px; border-radius: 12px; border: 1px solid var(--glass-border); box-shadow: inset 0 0 10px rgba(0,0,0,0.2);"></div>
                 </div>
 
                 <form id="infrastructureForm" class="form-grid">

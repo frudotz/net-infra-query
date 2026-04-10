@@ -245,6 +245,44 @@ export default {
                         headers: { 'Content-Type': 'application/json', ...dynamicCors },
                     });
                 }
+                else if (action === 'geocode') {
+                    const lat = url.searchParams.get('lat');
+                    const lon = url.searchParams.get('lon');
+
+                    if (!lat || !lon) {
+                        return new Response(JSON.stringify({ success: false, error: "Eksik parametreler: lat ve lon gerekli." }), {
+                            status: 400, headers: { 'Content-Type': 'application/json', ...dynamicCors }
+                        });
+                    }
+
+                    // Nominatim Reverse Geocoding
+                    let geocodeUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+                    
+                    // Opsiyonel: Eger env.GEOCODE_API_KEY tanimliysa baska bir servise/paid apigeye gonderilebilir
+                    // Su an Nominatim uzerinden ilerliyoruz
+                    
+                    const fetchOptions = {
+                        method: 'GET',
+                        headers: {
+                            'User-Agent': env.AGENT_STRING || 'AltyapiSorgulamaApp/1.0 (frudotz.com)',
+                            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+                        }
+                    };
+
+                    const geocodeRes = await fetch(geocodeUrl, fetchOptions);
+
+                    if (!geocodeRes.ok) {
+                        return new Response(JSON.stringify({ success: false, error: "Geocoding servisine ulasilamadi." }), {
+                            status: 502, headers: { 'Content-Type': 'application/json', ...dynamicCors }
+                        });
+                    }
+
+                    const geocodeData = await geocodeRes.json();
+                    
+                    return new Response(JSON.stringify({ success: true, data: geocodeData }), {
+                        headers: { 'Content-Type': 'application/json', ...dynamicCors }
+                    });
+                }
                 else if (action === 'address') {
                     if (!env.ADDRESS_SOURCE) throw new Error("ADDRESS_SOURCE yapılandırılmamış.");
 

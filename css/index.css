@@ -271,3 +271,17 @@ select:disabled {
         padding: 1.5rem;
     }
 }
+
+/* Map Overrides */
+.hidden {
+    display: none !important;
+}
+
+.dark .leaflet-container {
+    filter: invert(1) hue-rotate(180deg) brightness(85%) contrast(95%);
+    background: #0f172a;
+}
+.dark .leaflet-marker-icon,
+.dark .leaflet-marker-shadow {
+    filter: invert(1) hue-rotate(180deg);
+}
