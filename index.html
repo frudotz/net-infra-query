@@ -8,8 +8,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 
@@ -65,11 +68,17 @@
                 </div>
 
                 <div id="mapWrapper" class="hidden" style="margin-bottom: 20px; transition: all 0.3s ease;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span style="font-size: 0.9em; color: var(--text-muted);">Bulunan Adres Puanı: <strong id="mapScoreText" style="color: var(--clr-primary);">%0</strong></span>
-                        <button type="button" id="geoLocateBtn" style="background: none; border: 1px solid var(--clr-primary); color: var(--clr-primary); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8em; font-weight: 600;">GPS Koordinatımı Bul</button>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.9em; color: var(--text-muted);">Bulunan Adres Puanı: <strong
+                                id="mapScoreText" style="color: var(--clr-primary);">%0</strong></span>
+                        <button type="button" id="geoLocateBtn"
+                            style="background: none; border: 1px solid var(--clr-primary); color: var(--clr-primary); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8em; font-weight: 600;">GPS
+                            Koordinatımı Bul</button>
                     </div>
-                    <div id="map" style="width: 100%; height: 300px; border-radius: 12px; border: 1px solid var(--glass-border); box-shadow: inset 0 0 10px rgba(0,0,0,0.2);"></div>
+                    <div id="map"
+                        style="width: 100%; height: 300px; border-radius: 12px; border: 1px solid var(--glass-border); box-shadow: inset 0 0 10px rgba(0,0,0,0.2);">
+                    </div>
                 </div>
 
                 <form id="infrastructureForm" class="form-grid">

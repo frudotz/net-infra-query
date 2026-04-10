@@ -1,23 +1,26 @@
 :root {
     /* Kalıcı Renkler - Tema bağımsız (Türk Telekom Esintisi ve Modern Renkler) */
-    --clr-primary: #38bdf8; /* Turkuaz/Sky Blue */
-    --clr-secondary: #facc15; /* Sarı */
-    --clr-navy: #1e3a8a; /* Lacivert */
+    --clr-primary: #38bdf8;
+    /* Turkuaz/Sky Blue */
+    --clr-secondary: #facc15;
+    /* Sarı */
+    --clr-navy: #1e3a8a;
+    /* Lacivert */
     --clr-success: #22c55e;
-    
+
     /* Default Dark Mode */
     --bg-base: #020617;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    
+
     --glass-bg: rgba(30, 41, 59, 0.4);
     --glass-border: rgba(255, 255, 255, 0.1);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    
+
     --input-bg: rgba(15, 23, 42, 0.6);
     --input-border: rgba(56, 189, 248, 0.3);
     --input-focus: rgba(56, 189, 248, 0.8);
-    
+
     --mesh-1: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.12), transparent 45%);
     --mesh-2: radial-gradient(circle at 80% 10%, rgba(99, 102, 241, 0.14), transparent 40%);
     --mesh-3: radial-gradient(circle, rgba(34, 197, 94, 0.3), transparent 70%);
@@ -27,14 +30,14 @@
     --bg-base: #f1f5f9;
     --text-main: #0f172a;
     --text-muted: #475569;
-    
+
     --glass-bg: rgba(255, 255, 255, 0.7);
     --glass-border: rgba(0, 0, 0, 0.05);
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-    
+
     --input-bg: rgba(255, 255, 255, 0.9);
     --input-border: rgba(56, 189, 248, 0.3);
-    
+
     --mesh-1: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.2), transparent 45%);
     --mesh-2: radial-gradient(circle at 80% 10%, rgba(99, 102, 241, 0.2), transparent 40%);
     --mesh-3: radial-gradient(circle, rgba(34, 197, 94, 0.4), transparent 70%);
@@ -57,7 +60,10 @@ body {
 
 .bg-mesh {
     position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background-image: var(--mesh-1), var(--mesh-2), var(--mesh-3);
     z-index: -1;
     pointer-events: none;
@@ -104,6 +110,7 @@ header {
     transition: all 0.2s;
     outline: none;
 }
+
 .btn-icon:hover {
     transform: scale(1.1);
     border-color: var(--clr-primary);
@@ -267,6 +274,7 @@ select:disabled {
     .form-grid {
         grid-template-columns: 1fr;
     }
+
     .glass-card {
         padding: 1.5rem;
     }
@@ -281,6 +289,7 @@ select:disabled {
     filter: invert(1) hue-rotate(180deg) brightness(85%) contrast(95%);
     background: #0f172a;
 }
+
 .dark .leaflet-marker-icon,
 .dark .leaflet-marker-shadow {
     filter: invert(1) hue-rotate(180deg);
