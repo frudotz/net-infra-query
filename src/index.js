@@ -89,7 +89,7 @@ async function fetchRealInfrastructure(kapi, il, env) {
     if (addressUrl) reqs.push(fetchTarget(addressUrl, env, { method: "GET" }).catch(e => null));
 
     const [raw, rawAddress] = await Promise.all(reqs);
-    const upstream = await raw.json();
+    const data = await raw.json();
 
     let acikAdresText = "Adres bulunamadı";
     if (rawAddress) {
@@ -107,7 +107,7 @@ async function fetchRealInfrastructure(kapi, il, env) {
     // data.altyapi genellikle "Hiper (FIBER)" veya "VDSL2" gibi döner.
     let infraType = data.altyapi || 'Bilinmiyor';
     const isFiber = infraType.toUpperCase().includes('FIBER');
-    
+
     if (isFiber) infraType = 'Fiber';
     else if (infraType.toUpperCase().includes('VDSL')) infraType = 'VDSL';
     else if (infraType.toUpperCase().includes('ADSL')) infraType = 'ADSL';
