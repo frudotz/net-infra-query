@@ -67,16 +67,32 @@ document.addEventListener('DOMContentLoaded', () => {
                   .replace(/bulv(\.|arı|ari)?/ig, '')
                   .replace(/\s+/g, ' ').trim();
     }
+
+    function extractAlphaNumCode(str) {
+        // Find things like "74/b", "7", "g/5" and just strip non-alphanumeric to compare
+        // Actually, just find numbers and their adjacent letters
+        const matches = str.match(/\d+[a-z]?|[a-z]?\d+/g);
+        return matches ? matches.join('') : '';
+    }
     
-    function findBestMatch(targetStr, optionsArray) {
+    function findBestMatch(targetStr, optionsArray, strictNumeric = false) {
         let bestMatch = null;
         let minDistance = Infinity;
         const targetNorm = normalizeStr(targetStr);
+        const targetCodes = extractAlphaNumCode(targetNorm);
         
         for (let opt of optionsArray) {
             const text = opt.name || opt.ad || opt.kapiNo || opt.binaNo || '';
             const optNorm = normalizeStr(text);
             if(!optNorm) continue;
+            
+            // Strict numeric check to prevent 74/B matching 74/A or 7.Bag matching 74
+            if (strictNumeric) {
+                const optCodes = extractAlphaNumCode(optNorm);
+                if (targetCodes && optCodes && targetCodes !== optCodes) {
+                    continue; // Skip this option, the essential street/building numbers do not match
+                }
+            }
             
             if (optNorm === targetNorm) {
                 bestMatch = opt;
@@ -124,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         provOpts = Array.from(elProvince.options).slice(1).map(o => ({ id: o.value, name: o.textContent }));
                     }
 
-                    const matchRes = findBestMatch(provinceName, provOpts);
+                    const matchRes = findBestMatch(provinceName, provOpts, false);
                     if (matchRes.match && matchRes.score > 40) {
                         elProvince.value = matchRes.match.id;
                         totalScore += matchRes.score; checks++;
@@ -134,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const listD = await fetchAddressData('district', matchRes.match.id);
                             populateDropdown(elDistrict, listD, 'İlçe Seçiniz...');
                             
-                            const dMatch = findBestMatch(districtName, listD);
+                            const dMatch = findBestMatch(districtName, listD, false);
                             if (dMatch.match && dMatch.score > 40) {
                                 elDistrict.value = dMatch.match.id;
                                 totalScore += dMatch.score; checks++;
@@ -144,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const listN = await fetchAddressData('neighborhood', dMatch.match.id);
                                     populateDropdown(elNeighborhood, listN, 'Mahalle Seçiniz...');
                                     
-                                    const nMatch = findBestMatch(neighborhoodName, listN);
+                                    const nMatch = findBestMatch(neighborhoodName, listN, false);
                                     if (nMatch.match && nMatch.score > 40) {
                                         elNeighborhood.value = nMatch.match.id;
                                         totalScore += nMatch.score; checks++;
@@ -154,8 +170,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                             const listS = await fetchAddressData('street', nMatch.match.id);
                                             populateDropdown(elStreet, listS, 'Sokak Seçiniz...');
                                             
-                                            const sMatch = findBestMatch(roadName, listS);
-                                            if (sMatch.match && sMatch.score > 40) {
+                                            // Sokak ve bina eşleşmelerinde katı numaratör (strictNumeric) kullanılır
+                                            const sMatch = findBestMatch(roadName, listS, true);
+                                            if (sMatch.match && sMatch.score > 50) {
                                                 elStreet.value = sMatch.match.id;
                                                 totalScore += sMatch.score; checks++;
                                                 
@@ -164,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                                 populateDropdown(elBuilding, listB, 'Bina Seçiniz...');
                                                 
                                                 if (houseNo) {
-                                                    const bMatch = findBestMatch(houseNo, listB);
+                                                    const bMatch = findBestMatch(houseNo, listB, true);
                                                     if (bMatch.match && bMatch.score > 70) {
                                                         elBuilding.value = bMatch.match.id;
                                                         resetDropdown(elApartment, 'Yükleniyor...');

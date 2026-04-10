@@ -255,16 +255,18 @@ export default {
                         });
                     }
 
-                    if (!env.GEOCODE_API_KEY) {
-                        return new Response(JSON.stringify({ success: false, error: "GEOCODE_API_KEY tanımlanmamış. Cloudflare üzerinden Google Maps API Key ekleyiniz." }), {
-                            status: 500, headers: { 'Content-Type': 'application/json', ...dynamicCors }
-                        });
-                    }
-
-                    // Google Maps Reverse Geocoding
-                    const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${env.GEOCODE_API_KEY}&language=tr`;
+                    // Profiling ve Cost: SIFIR Maliyet olmasi icin OpenStreetMap (Nominatim) public free servisine geri donduk
+                    let geocodeUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
                     
-                    const geocodeRes = await fetch(geocodeUrl);
+                    const fetchOptions = {
+                        method: 'GET',
+                        headers: {
+                            'User-Agent': env.AGENT_STRING || 'AltyapiSorgulama/1.0',
+                            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+                        }
+                    };
+
+                    const geocodeRes = await fetch(geocodeUrl, fetchOptions);
 
                     if (!geocodeRes.ok) {
                         return new Response(JSON.stringify({ success: false, error: "Geocoding servisine ulasilamadi." }), {
@@ -274,35 +276,7 @@ export default {
 
                     const geocodeData = await geocodeRes.json();
                     
-                    if (geocodeData.status !== 'OK' || !geocodeData.results || geocodeData.results.length === 0) {
-                         return new Response(JSON.stringify({ success: true, data: { address: {} } }), {
-                             headers: { 'Content-Type': 'application/json', ...dynamicCors }
-                         });
-                    }
-
-                    // Normalizing Google API format to match our frontend variables (same as old Nominatim)
-                    const result = geocodeData.results[0];
-                    let addr = {};
-                    
-                    for (let comp of result.address_components) {
-                        const types = comp.types;
-                        if (types.includes('administrative_area_level_1')) {
-                            addr.province = comp.long_name;
-                        } else if (types.includes('administrative_area_level_2') || types.includes('locality')) {
-                            // If locality exists, it's often the district in TR, fallback is level_2
-                            if (!addr.town || types.includes('administrative_area_level_2')) {
-                                addr.town = comp.long_name;
-                            }
-                        } else if (types.includes('administrative_area_level_4') || types.includes('neighborhood') || types.includes('sublocality')) {
-                            addr.neighbourhood = comp.long_name;
-                        } else if (types.includes('route')) {
-                            addr.road = comp.long_name;
-                        } else if (types.includes('street_number')) {
-                            addr.house_number = comp.long_name;
-                        }
-                    }
-                    
-                    return new Response(JSON.stringify({ success: true, data: { address: addr } }), {
+                    return new Response(JSON.stringify({ success: true, data: { address: geocodeData.address || {} } }), {
                         headers: { 'Content-Type': 'application/json', ...dynamicCors }
                     });
                 }
