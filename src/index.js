@@ -106,11 +106,23 @@ async function fetchRealInfrastructure(kapi, il, env) {
     // Altyapı tipi tespiti (Fiber, VDSL2, ADSL vb.)
     // data.altyapi genellikle "Hiper (FIBER)" veya "VDSL2" gibi döner.
     let infraType = data.altyapi || 'Bilinmiyor';
+    // Gelen verinin tipini güvene almak için string'e çeviriyoruz if object/array
+    if (typeof infraType !== 'string') {
+        if (typeof infraType === 'object' && infraType !== null) {
+            infraType = JSON.stringify(infraType);
+        } else {
+            infraType = String(infraType);
+        }
+    }
     const isFiber = infraType.toUpperCase().includes('FIBER');
-
-    if (isFiber) infraType = 'Fiber';
-    else if (infraType.toUpperCase().includes('VDSL')) infraType = 'VDSL';
-    else if (infraType.toUpperCase().includes('ADSL')) infraType = 'ADSL';
+    
+    if (isFiber) {
+        infraType = 'Fiber';
+    } else if (infraType.toUpperCase().includes('VDSL')) {
+        infraType = 'VDSL';
+    } else if (infraType.toUpperCase().includes('ADSL')) {
+        infraType = 'ADSL';
+    }
 
     const speedKbps = parseInt(data.max_hiz, 10) || null;
     const portStatus = data.bos_port ? "Var" : "Yok";
