@@ -39,6 +39,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const BACKEND_URL = 'https://niq.api.frudotz.com'; // Use your backend url
 
+    // Toast Mesaj Sistemi
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        let icon = 'ℹ️';
+        if (type === 'success') icon = '✅';
+        if (type === 'error') icon = '❌';
+        if (type === 'warning') icon = '⚠️';
+
+        toast.innerHTML = `
+            <div class="toast-icon">${icon}</div>
+            <div class="toast-content">${message}</div>
+            <div class="toast-progress"></div>
+        `;
+        container.appendChild(toast);
+
+        // Animasyon
+        const progress = toast.querySelector('.toast-progress');
+        progress.style.transition = 'width 3s linear';
+        requestAnimationFrame(() => {
+            progress.style.width = '0%';
+        });
+
+        setTimeout(() => {
+            toast.classList.add('hiding');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // Harita Limitleri için Debounce
+    let geocodeTimeout = null;
+    let lastGeocodeTime = 0;
+
     function levenshtein(a, b) {
         const matrix = [];
         let i, j;
@@ -228,6 +265,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                                             const listA = await fetchAddressData('apartment', bMatch.match.id);
                                                             if (geocodeId !== currentGeocodeId) return;
                                                             populateDropdown(elApartment, listA, 'Daire Seçiniz...');
+                                                            if (listA && listA.length > 0) {
+                                                                elApartment.value = listA[0].id;
+                                                                showToast('Bina bulundu! Genel altyapıyı görebilmeniz için ilk daire otomatik seçildi.', 'success');
+                                                            }
                                                         } else {
                                                             resetDropdown(elApartment, 'Bina ile eşleştirilemedi');
                                                         }
@@ -263,7 +304,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function initMap() {
         if (leafletMap || typeof L === 'undefined') return;
 
-        leafletMap = L.map('map').setView([39.92077, 32.85411], 5);
+        const turkeyBounds = [
+            [35.8, 25.6], // South-West
+            [42.1, 44.8]  // North-East
+        ];
+
+        leafletMap = L.map('map', {
+            maxBounds: turkeyBounds,
+            maxBoundsViscosity: 1.0,
+            minZoom: 5
+        }).setView([39.92077, 32.85411], 5);
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap'
         }).addTo(leafletMap);
@@ -272,7 +323,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         leafletMarker.on('dragend', function (e) {
             const coords = e.target.getLatLng();
-            handleGeocode(coords.lat, coords.lng);
+            const now = Date.now();
+            
+            if (now - lastGeocodeTime < 1000) {
+                showToast('Lütfen yavaşlayın, harita hız limitine takıldınız.', 'warning');
+                return;
+            }
+
+            clearTimeout(geocodeTimeout);
+            geocodeTimeout = setTimeout(() => {
+                lastGeocodeTime = Date.now();
+                handleGeocode(coords.lat, coords.lng);
+            }, 500);
         });
 
         if (navigator.geolocation) {
@@ -282,7 +344,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 leafletMap.setView([lat, lng], 16);
                 leafletMarker.setLatLng([lat, lng]);
                 handleGeocode(lat, lng);
-            }, err => console.warn("GPS reddedildi"));
+            }, async err => {
+                showToast("GPS izni verilmedi, IP adresinizden konum tahmin ediliyor...", "warning");
+                try {
+                    const ipRes = await fetch(`${BACKEND_URL}/?action=ip_location`);
+                    const ipData = await ipRes.json();
+                    if(ipData.success && ipData.lat && ipData.lon) {
+                        leafletMap.setView([ipData.lat, ipData.lon], 12);
+                        leafletMarker.setLatLng([ipData.lat, ipData.lon]);
+                        handleGeocode(ipData.lat, ipData.lon);
+                    }
+                } catch(e) {}
+            });
         }
     }
 
@@ -311,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     leafletMarker.setLatLng([lat, lng]);
                     handleGeocode(lat, lng);
                 }, err => {
-                    alert('Konum alınamadı, izinleri kontrol edin.');
+                    showToast('Konum alınamadı, tarayıcı izinlerini kontrol edin.', 'error');
                 });
             }
         });
@@ -383,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const turnstileToken = new FormData(form).get('cf-turnstile-response');
             if (!turnstileToken) {
-                alert("Güncellemek için lütfen aşağıdaki formdan 'Ben robot değilim' doğrulamasını tamamlayın.");
+                showToast("Güncellemek için lütfen aşağıdaki formdan 'Ben robot değilim' doğrulamasını tamamlayın.", 'warning');
                 document.querySelector('.cf-turnstile').scrollIntoView({ behavior: 'smooth' });
                 return;
             }
@@ -593,14 +666,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 if (data.isRateLimited) {
-                    alert('Limit Uyarısı: ' + data.error);
+                    showToast('Limit Uyarısı: ' + data.error, 'warning');
                 } else {
-                    alert('Sorgulama sırasında bir hata oluştu: ' + data.error);
+                    showToast('Sorgulama sırasında bir hata oluştu: ' + data.error, 'error');
                 }
             }
         } catch (err) {
             console.error(err);
-            alert('Sunucuya bağlanılamadı. Lütfen internet bağlantınızı kontrol edin.');
+            showToast('Sunucuya bağlanılamadı. Lütfen internet bağlantınızı kontrol edin.', 'error');
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Sorgula';
@@ -610,24 +683,78 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const tabAddressBtn = document.getElementById('tabAddressBtn');
+    const tabBbkBtn = document.getElementById('tabBbkBtn');
+    const addressGroups = document.getElementById('addressGroupWrappers');
+    const bbkGroup = document.getElementById('bbkGroupWrapper');
+    const bbkInput = document.getElementById('bbkInput');
+
+    let currentMode = 'address'; // 'address' | 'bbk'
+
+    if (tabAddressBtn && tabBbkBtn) {
+        tabAddressBtn.addEventListener('click', () => {
+            currentMode = 'address';
+            tabAddressBtn.classList.add('active');
+            tabAddressBtn.style.background = 'rgba(34, 197, 94, 0.1)';
+            tabAddressBtn.style.borderColor = 'var(--clr-primary)';
+            tabAddressBtn.style.color = 'var(--clr-primary)';
+            
+            tabBbkBtn.classList.remove('active');
+            tabBbkBtn.style.background = 'var(--glass-bg)';
+            tabBbkBtn.style.borderColor = 'var(--glass-border)';
+            tabBbkBtn.style.color = 'var(--text-muted)';
+
+            addressGroups.style.display = 'contents';
+            bbkGroup.style.display = 'none';
+        });
+
+        tabBbkBtn.addEventListener('click', () => {
+            currentMode = 'bbk';
+            tabBbkBtn.classList.add('active');
+            tabBbkBtn.style.background = 'rgba(34, 197, 94, 0.1)';
+            tabBbkBtn.style.borderColor = 'var(--clr-primary)';
+            tabBbkBtn.style.color = 'var(--clr-primary)';
+
+            tabAddressBtn.classList.remove('active');
+            tabAddressBtn.style.background = 'var(--glass-bg)';
+            tabAddressBtn.style.borderColor = 'var(--glass-border)';
+            tabAddressBtn.style.color = 'var(--text-muted)';
+
+            addressGroups.style.display = 'none';
+            bbkGroup.style.display = 'block';
+        });
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-
-        const bbk = elApartment.value;
-        const il = elProvince.value;
 
         const formData = new FormData(form);
         const turnstileToken = formData.get('cf-turnstile-response');
 
-        if (!bbk || !il) {
-            alert("Lütfen tüm adres adımlarını tamamlayıp daire seçin.");
+        if (!turnstileToken) {
+            showToast("Lütfen bot olmadığınızı doğrulamak için kutucuğu işaretleyin.", "error");
             return;
         }
 
-        if (!turnstileToken) {
-            alert("Lütfen bot olmadığınızı doğrulamak için kutucuğu işaretleyin.");
-            return;
+        let bbk = '';
+        let il = '';
+
+        if (currentMode === 'address') {
+            bbk = elApartment.value;
+            il = elProvince.value;
+            if (!bbk || !il) {
+                showToast("Lütfen tüm adres adımlarını tamamlayıp daire seçin.", "warning");
+                return;
+            }
+        } else {
+            bbk = bbkInput.value;
+            il = '7'; // BBK'dan gideceğimiz için il önemli değil
+            if (!bbk || bbk.length !== 10) {
+                showToast("Lütfen 10 haneli geçerli bir BBK numarası girin.", "warning");
+                return;
+            }
         }
+
         await doInfraQuery(bbk, il, turnstileToken, false);
     });
 });
