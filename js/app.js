@@ -753,7 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             bbk = bbkInput.value;
             il = '7'; // BBK'dan gideceğimiz için il önemli değil
-            if (!bbk || bbk.length !== 10) {
+            if (!bbk) {
                 showToast("Lütfen geçerli bir BBK numarası girin.", "warning");
                 return;
             }
