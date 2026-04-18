@@ -1,0 +1,16 @@
+{
+  "name": "Altyapı Sorgulama Platformu",
+  "short_name": "Altyapı",
+  "description": "Harita üzerinden detaylı internet altyapı sorgulama deneyimi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
