@@ -9,7 +9,8 @@
     <!-- Title & SEO -->
     <title>Altyapı Sorgulama Platformu - @frudotz</title>
     <meta name="title" content="Altyapı Sorgulama Platformu - @frudotz">
-    <meta name="description" content="Türkiye genelinde internet altyapısını harita üzerinden sorgulayabileceğiniz gelişmiş platform.">
+    <meta name="description"
+        content="Türkiye genelinde internet altyapısını harita üzerinden sorgulayabileceğiniz gelişmiş platform.">
     <meta name="keywords" content="altyapı sorgulama, internet altyapı, fiber sorgulama, vdsl, adsl, harita altyapı">
     <meta name="author" content="@frudotz">
 
@@ -38,6 +39,7 @@
 
     <!-- Favicon -->
     <link rel="icon" href="/favicon.ico">
+    <link rel="manifest" href="manifest.json">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -111,10 +113,15 @@
                     Hız limiti ve captcha doğrulaması aktif.
                 </div>
 
+                <div class="search-tabs" style="display: flex; gap: 10px; margin-bottom: 25px;">
+                    <button type="button" class="tab-btn active" id="tabAddressBtn" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--clr-primary); background: rgba(34, 197, 94, 0.1); color: var(--clr-primary); font-weight: 600; cursor: pointer; transition: all 0.3s;">Adres İle Sorgula</button>
+                    <button type="button" class="tab-btn" id="tabBbkBtn" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-muted); font-weight: 600; cursor: pointer; transition: all 0.3s;">BBK İle Sorgula</button>
+                </div>
+
                 <div id="mapWrapper" class="hidden" style="margin-bottom: 20px; transition: all 0.3s ease;">
                     <div
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span style="font-size: 0.9em; color: var(--text-muted);">Bulunan Adres Puanı: <strong
+                        <span style="font-size: 0.9em; color: var(--text-muted);">Adres Doğruluk Oranı: <strong
                                 id="mapScoreText" style="color: var(--clr-primary);">%0</strong></span>
                         <button type="button" id="geoLocateBtn"
                             style="background: none; border: 1px solid var(--clr-primary); color: var(--clr-primary); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8em; font-weight: 600;">GPS
@@ -126,46 +133,54 @@
                 </div>
 
                 <form id="infrastructureForm" class="form-grid">
-                    <div class="form-group">
-                        <label for="province">İl</label>
-                        <select id="province" required>
-                            <option value="">Yükleniyor...</option>
-                        </select>
+                    <div id="addressGroupWrappers" style="display: contents;">
+                        <div class="form-group">
+                            <label for="province">İl</label>
+                            <select id="province" required>
+                                <option value="">Yükleniyor...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="district">İlçe</label>
+                            <select id="district" disabled>
+                                <option value="">İlçe Seçiniz...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="neighborhood">Mahalle</label>
+                            <select id="neighborhood" disabled>
+                                <option value="">Mahalle Seçiniz...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="street">Sokak/Cadde</label>
+                            <select id="street" disabled>
+                                <option value="">Sokak Seçiniz...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="building">Bina</label>
+                            <select id="building" disabled>
+                                <option value="">Bina Seçiniz...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="apartment">Daire / İç Kapı</label>
+                            <select id="apartment" disabled>
+                                <option value="">Daire Seçiniz...</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="district">İlçe</label>
-                        <select id="district" disabled>
-                            <option value="">İlçe Seçiniz...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="neighborhood">Mahalle</label>
-                        <select id="neighborhood" disabled>
-                            <option value="">Mahalle Seçiniz...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="street">Sokak/Cadde</label>
-                        <select id="street" disabled>
-                            <option value="">Sokak Seçiniz...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="building">Bina</label>
-                        <select id="building" disabled>
-                            <option value="">Bina Seçiniz...</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="apartment">Daire / İç Kapı</label>
-                        <select id="apartment" disabled>
-                            <option value="">Daire Seçiniz...</option>
-                        </select>
+                    <div id="bbkGroupWrapper" class="form-group" style="display: none; grid-column: 1 / -1;">
+                        <label for="bbkInput">BBK</label>
+                        <input type="number" id="bbkInput" placeholder="BBK kodu giriniz..." style="width: 100%; padding: 14px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, 0.03); color: var(--text-main); font-size: 1.1rem; text-align: center; letter-spacing: 2px;">
+                        <p style="font-size: 0.85em; color: var(--text-muted); text-align: center; margin-top: 10px;">BBK numarası ile hızlı doğrudan sorgulama yapabilirsiniz.</p>
                     </div>
 
                     <div class="form-actions"
@@ -282,6 +297,9 @@
         </main>
     </div>
 
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <!-- Alt Bilgi (Footer) -->
     <footer class="site-footer">
         Altyapı Sorgulama • Copyright ©
@@ -291,6 +309,13 @@
     </footer>
 
     <script src="js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW kayıt hatası:', err));
+            });
+        }
+    </script>
 </body>
 
 </html>
