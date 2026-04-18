@@ -706,6 +706,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             addressGroups.style.display = 'contents';
             bbkGroup.style.display = 'none';
+            elProvince.required = true;
+            bbkInput.required = false;
         });
 
         tabBbkBtn.addEventListener('click', () => {
@@ -722,6 +724,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             addressGroups.style.display = 'none';
             bbkGroup.style.display = 'block';
+            elProvince.required = false;
+            bbkInput.required = true;
         });
     }
 
@@ -750,7 +754,7 @@ document.addEventListener('DOMContentLoaded', () => {
             bbk = bbkInput.value;
             il = '7'; // BBK'dan gideceğimiz için il önemli değil
             if (!bbk || bbk.length !== 10) {
-                showToast("Lütfen 10 haneli geçerli bir BBK numarası girin.", "warning");
+                showToast("Lütfen geçerli bir BBK numarası girin.", "warning");
                 return;
             }
         }
