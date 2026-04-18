@@ -60,13 +60,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function normalizeStr(str) {
         if (!str) return '';
+        // Haritadan gelen gereksiz ekleri (ili, ilçesi, bulvarı) kaldır ve temizle
         return str.replace(/İ/g, 'I').replace(/ı/g, 'i').toLowerCase()
-            .replace(/mah(\.|alle|allesi)?/ig, '')
-            .replace(/sok(\.|ak|ağı|agi|aği)?/ig, '')
-            .replace(/sk(\.)?/ig, '')
-            .replace(/cad(\.|de|desi)?/ig, '')
-            .replace(/cd(\.)?/ig, '')
-            .replace(/bulv(\.|ar|arı|ari)?/ig, '')
+            .replace(/\b(mah(\.|alle|allesi)?)\b/ig, '')
+            .replace(/\b(sok(\.|ak|ağı|agi|aği)?)\b/ig, '')
+            .replace(/\b(sk(\.)?)\b/ig, '')
+            .replace(/\b(cad(\.|de|desi)?)\b/ig, '')
+            .replace(/\b(cd(\.)?)\b/ig, '')
+            .replace(/\b(bulv(\.|ar|arı|ari)?)\b/ig, '')
+            .replace(/\b(il[cç]es[iı])\b/ig, '')
+            .replace(/\b(il[iı])\b/ig, '')
+            .replace(/\b(k[oö]y[uü])\b/ig, '')
+            .replace(/\b(beldes[iı])\b/ig, '')
+            .replace(/\b(buca[gğ][iı])\b/ig, '')
+            .replace(/[-_./\/]/g, ' ') // Özel karakterleri boşluk yap
             .replace(/\s+/g, ' ').trim();
     }
 
