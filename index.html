@@ -114,11 +114,19 @@
                 </div>
 
                 <div class="search-tabs" style="display: flex; gap: 10px; margin-bottom: 25px;">
-                    <button type="button" class="tab-btn active" id="tabAddressBtn" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--clr-primary); background: rgba(34, 197, 94, 0.1); color: var(--clr-primary); font-weight: 600; cursor: pointer; transition: all 0.3s;">Adres İle Sorgula</button>
-                    <button type="button" class="tab-btn" id="tabBbkBtn" style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-muted); font-weight: 600; cursor: pointer; transition: all 0.3s;">BBK İle Sorgula</button>
+                    <button type="button" class="tab-btn active" id="tabAddressBtn"
+                        style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--clr-primary); background: rgba(34, 197, 94, 0.1); color: var(--clr-primary); font-weight: 600; cursor: pointer; transition: all 0.3s;">Adres
+                        ile Sorgula</button>
+                    <button type="button" class="tab-btn" id="tabBbkBtn"
+                        style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-muted); font-weight: 600; cursor: pointer; transition: all 0.3s;">BBK
+                        ile Sorgula</button>
                 </div>
 
-                <div id="mapWrapper" class="hidden" style="margin-bottom: 20px; transition: all 0.3s ease;">
+                <div id="mapWrapper" class="hidden" style="margin-bottom: 20px; transition: all 0.3s ease; position: relative;">
+                    <div id="mapInfoTooltip" style="position: absolute; top: 15px; left: 15px; z-index: 1000; background: var(--glass-bg); padding: 8px; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: help; border: 1px solid var(--clr-primary); color: var(--clr-primary); box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+                        <i class="fa-solid fa-info"></i>
+                        <div class="tooltip-text" style="display: none; position: absolute; left: 40px; top: 50%; transform: translateY(-50%); background: var(--glass-bg); padding: 6px 12px; border-radius: 6px; white-space: nowrap; font-size: 0.85rem; color: var(--text-main); border: 1px solid var(--glass-border);">Pin'i tutarken haritayı yakınlaştırabilirsiniz</div>
+                    </div>
                     <div
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <span style="font-size: 0.9em; color: var(--text-muted);">Adres Doğruluk Oranı: <strong
@@ -179,14 +187,15 @@
 
                     <div id="bbkGroupWrapper" class="form-group" style="display: none; grid-column: 1 / -1;">
                         <label for="bbkInput">BBK</label>
-                        <input type="number" inputmode="numeric" id="bbkInput" placeholder="BBK kodu giriniz..." style="width: 100%; padding: 14px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, 0.03); color: var(--text-main); font-size: 1.1rem; text-align: center; letter-spacing: 2px;">
-                        <p style="font-size: 0.85em; color: var(--text-muted); text-align: center; margin-top: 10px;">BBK numarası ile hızlı doğrudan sorgulama yapabilirsiniz.</p>
+                        <input type="number" inputmode="numeric" id="bbkInput" placeholder="BBK kodu giriniz..."
+                            style="width: 100%; padding: 14px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, 0.03); color: var(--text-main); font-size: 1.1rem; text-align: center; letter-spacing: 2px;">
+                        <p style="font-size: 0.85em; color: var(--text-muted); text-align: center; margin-top: 10px;">
+                            BBK numarası ile hızlı doğrudan sorgulama yapabilirsiniz.</p>
                     </div>
 
                     <div class="form-actions"
                         style="grid-column: 1 / -1; display: flex; gap: 15px; align-items: stretch; margin-top: 10px; flex-wrap: wrap; justify-content: center;">
-                        <div class="cf-turnstile" data-sitekey="0x4AAAAAAC2b5AELjEaqkIV4" data-theme="dark"
-                            style="flex: 0 0 auto;"></div>
+                        <div id="turnstileContainer" class="cf-turnstile" data-sitekey="0x4AAAAAAC2b5AELjEaqkIV4" data-size="invisible" data-callback="onTurnstileSuccess"></div>
                         <button type="submit" class="btn-primary" id="submitBtn"
                             style="flex: 1; min-width: 200px; height: 65px; margin: 0;">Sorgula</button>
                     </div>
