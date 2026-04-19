@@ -39,6 +39,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const BACKEND_URL = 'https://niq.api.frudotz.com'; // Use your backend url
 
+    // Session Token Yönetimi
+    let sessionToken = sessionStorage.getItem('api_token');
+    
+    window.onTurnstileSuccess = async function(token) {
+        if(sessionToken) {
+            loadInitialProvinces();
+            return;
+        }
+        try {
+            const res = await fetch(`${BACKEND_URL}/?action=session`, {
+                headers: { 'X-Turnstile-Token': token }
+            });
+            const data = await res.json();
+            if(data.success && data.token) {
+                sessionToken = data.token;
+                sessionStorage.setItem('api_token', sessionToken);
+                loadInitialProvinces();
+            } else {
+                showToast("Oturum açılamadı: " + data.error, "error");
+            }
+        } catch(e) {
+            console.error(e);
+            showToast("Güvenlik bağlantısı kurulamadı.", "error");
+        }
+    };
+
+    async function apiFetch(url, options = {}) {
+        if (!sessionToken) {
+            throw new Error("Oturum doğrulaması bekleniyor...");
+        }
+        const headers = options.headers || {};
+        headers['Authorization'] = `Bearer ${sessionToken}`;
+        
+        const res = await fetch(url, { ...options, headers });
+        if (res.status === 401) {
+            sessionStorage.removeItem('api_token');
+            sessionToken = null;
+            if (typeof turnstile !== 'undefined') {
+                turnstile.reset();
+            }
+            throw new Error("Oturum süresi doldu. Lütfen sayfayı yenileyin.");
+        }
+        return res;
+    }
+
     // Toast Mesaj Sistemi
     function showToast(message, type = 'success') {
         const container = document.getElementById('toastContainer');
@@ -46,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
-        
+
         let icon = 'ℹ️';
         if (type === 'success') icon = '✅';
         if (type === 'error') icon = '❌';
@@ -185,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const geocodeId = ++currentGeocodeId;
         try {
             if (mapScoreText) mapScoreText.textContent = 'Aranıyor...';
-            const res = await fetch(`${BACKEND_URL}/?action=geocode&lat=${lat}&lon=${lon}`);
+            const res = await apiFetch(`${BACKEND_URL}/?action=geocode&lat=${lat}&lon=${lon}`);
             const data = await res.json();
 
             if (data.success && data.data.address) {
@@ -324,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
         leafletMarker.on('dragend', function (e) {
             const coords = e.target.getLatLng();
             const now = Date.now();
-            
+
             if (now - lastGeocodeTime < 1000) {
                 showToast('Lütfen yavaşlayın, harita hız limitine takıldınız.', 'warning');
                 return;
@@ -347,14 +392,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }, async err => {
                 showToast("GPS izni verilmedi, IP adresinizden konum tahmin ediliyor...", "warning");
                 try {
-                    const ipRes = await fetch(`${BACKEND_URL}/?action=ip_location`);
+                    const ipRes = await apiFetch(`${BACKEND_URL}/?action=ip_location`);
                     const ipData = await ipRes.json();
-                    if(ipData.success && ipData.lat && ipData.lon) {
+                    if (ipData.success && ipData.lat && ipData.lon) {
                         leafletMap.setView([ipData.lat, ipData.lon], 12);
                         leafletMarker.setLatLng([ipData.lat, ipData.lon]);
                         handleGeocode(ipData.lat, ipData.lon);
                     }
-                } catch(e) {}
+                } catch (e) { }
             });
         }
     }
@@ -454,14 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!saved) return;
             const savedData = JSON.parse(saved);
 
-            const turnstileToken = new FormData(form).get('cf-turnstile-response');
-            if (!turnstileToken) {
-                showToast("Güncellemek için lütfen aşağıdaki formdan 'Ben robot değilim' doğrulamasını tamamlayın.", 'warning');
-                document.querySelector('.cf-turnstile').scrollIntoView({ behavior: 'smooth' });
-                return;
-            }
-
-            await doInfraQuery(savedData.bbk, savedData.il, turnstileToken, true);
+            await doInfraQuery(savedData.bbk, savedData.il, true);
         });
     }
 
@@ -531,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let url = `${BACKEND_URL}/?action=address&level=${level}`;
         if (id) url += `&id=${id}`;
 
-        const res = await fetch(url);
+        const res = await apiFetch(url);
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
         return data.data; // clean list
@@ -555,9 +593,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Load Provinces
-    fetchAddressData('province').then(list => {
-        populateDropdown(elProvince, list, 'İl Seçiniz...');
-    }).catch(console.error);
+    window.loadInitialProvinces = function() {
+        if (!sessionToken) return;
+        fetchAddressData('province').then(list => {
+            populateDropdown(elProvince, list, 'İl Seçiniz...');
+        }).catch(console.error);
+    };
+
+    if (sessionToken) {
+        loadInitialProvinces();
+    }
 
     elProvince.addEventListener('change', async (e) => {
         resetDropdown(elDistrict, 'İlçe Seçiniz...');
@@ -632,16 +677,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-    async function doInfraQuery(bbk, il, turnstileToken, isRefresh = false) {
+    async function doInfraQuery(bbk, il, isRefresh = false) {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Sorgulanıyor...';
 
         try {
-            const res = await fetch(`${BACKEND_URL}/?action=infra&kapi=${bbk}&il=${il}`, {
-                headers: {
-                    'X-Turnstile-Token': turnstileToken
-                }
-            });
+            const res = await apiFetch(`${BACKEND_URL}/?action=infra&kapi=${bbk}&il=${il}`);
             const data = await res.json();
 
             if (data.success) {
@@ -698,7 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tabAddressBtn.style.background = 'rgba(34, 197, 94, 0.1)';
             tabAddressBtn.style.borderColor = 'var(--clr-primary)';
             tabAddressBtn.style.color = 'var(--clr-primary)';
-            
+
             tabBbkBtn.classList.remove('active');
             tabBbkBtn.style.background = 'var(--glass-bg)';
             tabBbkBtn.style.borderColor = 'var(--glass-border)';
@@ -732,11 +773,8 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const formData = new FormData(form);
-        const turnstileToken = formData.get('cf-turnstile-response');
-
-        if (!turnstileToken) {
-            showToast("Lütfen bot olmadığınızı doğrulamak için kutucuğu işaretleyin.", "error");
+        if (!sessionToken) {
+            showToast("Güvenlik doğrulaması bekleniyor, lütfen sayfayı yenileyiniz.", "error");
             return;
         }
 
@@ -759,6 +797,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        await doInfraQuery(bbk, il, turnstileToken, false);
+        await doInfraQuery(bbk, il, false);
     });
 });
