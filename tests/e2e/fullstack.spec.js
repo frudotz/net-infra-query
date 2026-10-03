@@ -29,7 +29,7 @@ test.beforeAll(async () => {
         DEV_ALLOW_HTTP_UPSTREAMS: 'true', JWT_SECRET: SECRET, TURNSTILE_SECRET: 'unused',
         INFRA_SOURCE_1: `${upstreams.base}/netgsm`, INFRA_SOURCE_2: `${upstreams.base}/yeninet`,
         INFRA_SOURCE_3: `${upstreams.base}/veganet`, INFRA_SOURCE: `${upstreams.base}/legacy/TT_Altyapi.php`,
-        ADDR_SOURCE_1: `${upstreams.base}/dsmart/adres`, // removed provider: must be skipped
+        ADDR_SOURCE_1: `${upstreams.base}/dsmart/api/v1/public/search/internet`, // DSmart primary
         ADDRESS_SOURCE: `${upstreams.base}/legacy/TT_`,
     };
     const args = ['wrangler', 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', '.wrangler/fullstack-state', '--show-interactive-dev-session=false'];
@@ -69,9 +69,21 @@ test('primary provider serves the result', async ({ page }) => {
     await upstreams.setModes({});
     await page.goto('/');
     await expect(page.locator('#province option[value="34"]')).toBeAttached();
-    // Real names, never the removed provider's "Il" placeholders.
-    await expect(page.locator('#province option')).toHaveText(['İl seçin', 'ANKARA', 'İSTANBUL']);
-    expect(await upstreams.hits()).not.toContain('dsmart');
+    // Real names from DSmart (primary), never its "Il" / "Ilce" type field.
+    await expect(page.locator('#province option')).toHaveText(['İl seçin', 'ANKARA', 'İSTANBUL', 'İZMİR']);
+    expect(await upstreams.hits()).toContain('dsmart');
+    await page.selectOption('#province', '34');
+    await expect(page.locator('#district option')).toHaveText(['İlçe seçin', 'ADALAR', 'ATAŞEHİR', 'ZEYTİNBURNU']);
+    await page.selectOption('#district', '1739');
+    await expect(page.locator('#neighborhood option')).toHaveText(['Mahalle seçin', 'BEŞTELSİZ MAH.', 'ÇIRPICI MAH.']);
+    await page.selectOption('#neighborhood', '40836');
+    await expect(page.locator('#street option')).toHaveText(['Cadde / sokak seçin', 'ŞEHİT YAŞAR GÜLEÇ SK.']);
+    await page.selectOption('#street', '747026');
+    await expect(page.locator('#building option')).toHaveText(['Bina seçin', '12']);
+    await page.selectOption('#building', '17576004');
+    await expect(page.locator('#apartment option')).toHaveText(['Daire seçin', 'İç Kapı 1', 'İç Kapı 2']);
+    const allOptions = await page.locator('select option').allTextContents();
+    for (const t of ['Il', 'Ilce', 'Bucak', 'Koy', 'Mahalle', 'CaddeSokak', 'Bina', 'Daire']) expect(allOptions).not.toContain(t);
     await page.getByRole('tab', { name: 'BBK ile' }).click();
     await page.fill('#bbkInput', String(++bbk));
     await page.getByRole('button', { name: 'Sorgula' }).click();
