@@ -121,7 +121,7 @@ async function runQuery(bbk, il, { isRefresh = false } = {}) {
     setButtonBusy(submitBtn, true, 'Sorgulanıyor…');
     showLoading(`BBK ${bbk} sorgulanıyor…`);
     announce('Sorgulanıyor');
-    if (window.matchMedia('(max-width: 920px)').matches) $('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (window.matchMedia('(max-width: 960px)').matches) $('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     try {
         const body = await fetchInfra(bbk, il);

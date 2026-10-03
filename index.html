@@ -81,8 +81,10 @@
         <div class="layout">
             <section class="panel query-panel" aria-labelledby="queryTitle">
                 <div class="panel-head">
-                    <h2 id="queryTitle">Sorgu</h2>
+                    <h2 id="queryTitle"><span class="step-dot" aria-hidden="true">1</span>Sorgu</h2>
+                    <span class="panel-meta">Günlük 20 sorgu</span>
                 </div>
+                <div class="panel-body">
 
                 <div class="segmented" role="tablist" aria-label="Sorgu yöntemi">
                     <button type="button" role="tab" id="tabAddressBtn" aria-controls="panelAddress" aria-selected="true">Adres ile</button>
@@ -159,41 +161,66 @@
                             <span class="spinner" aria-hidden="true"></span>
                             <span class="btn-label">Sorgula</span>
                         </button>
-                        <p class="form-note" id="sessionNote">Sorgular bot doğrulaması ve hız limitiyle korunur. Günlük sorgu hakkı: 20.</p>
+                        <p class="form-note" id="sessionNote">Sorgular bot doğrulaması ve hız limitiyle korunur.</p>
                     </div>
                 </form>
+                </div>
             </section>
 
             <div class="results-col">
-                <section id="resultsSection" class="panel result-panel" aria-labelledby="resultTitle">
+                <section id="resultsSection" class="panel result-panel" data-state="empty" aria-labelledby="resultTitle">
                     <div id="resultEmpty" class="state state-empty">
-                        <h2 id="resultTitle" class="state-title">Sonuç</h2>
-                        <p>Adresinizi seçip ya da BBK numarasını girip <strong>Sorgula</strong>'ya bastığınızda altyapı bilgileri burada görünür.</p>
-                        <ul class="empty-list">
-                            <li>Maksimum hız ve altyapı türü (Fiber, VDSL, ADSL)</li>
-                            <li>Boş port durumu</li>
-                            <li>Santral, mesafe ve müdürlük bilgileri</li>
-                        </ul>
+                        <div class="panel-head">
+                            <h2 id="resultTitle"><span class="step-dot" aria-hidden="true">2</span>Sonuç</h2>
+                            <span class="panel-meta">Henüz sorgu yok</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="ghost-hero" aria-hidden="true">
+                                <div class="ghost-metric ghost-metric-main"><span>Maksimum hız</span><b>— Mbps</b></div>
+                                <div class="ghost-metric"><span>Altyapı türü</span><b>—</b></div>
+                                <div class="ghost-metric"><span>Boş port</span><b>—</b></div>
+                            </div>
+                            <ol class="empty-steps">
+                                <li><b>Adresinizi seçin</b> ya da BBK numarasını girin.</li>
+                                <li><b>Sorgula</b>'ya basın; maksimum hız, altyapı türü, boş port ve santral bilgileri burada görünür.</li>
+                                <li>Sonucu <b>Görseli Kopyala</b> ile tek tıkla paylaşın.</li>
+                            </ol>
+                        </div>
                     </div>
 
                     <div id="resultLoading" class="state state-loading" hidden aria-busy="true">
-                        <div class="loading-row"><span class="spinner spinner-lg" aria-hidden="true"></span><span id="loadingText">Sorgulanıyor…</span></div>
-                        <p class="hint" id="loadingSlowText" hidden>Yanıt normalden uzun sürüyor. Birincil kaynak yanıt vermezse yedek kaynaklar otomatik olarak denenir.</p>
-                        <div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
+                        <div class="panel-head">
+                            <h2 class="loading-row"><span class="spinner spinner-lg" aria-hidden="true"></span><span id="loadingText">Sorgulanıyor…</span></h2>
+                        </div>
+                        <div class="panel-body">
+                            <div class="skeleton" aria-hidden="true">
+                                <span class="sk-hero"></span>
+                                <span class="sk-line"></span>
+                                <span class="sk-grid"><i></i><i></i><i></i><i></i></span>
+                            </div>
+                            <p class="hint" id="loadingSlowText" hidden>Yanıt normalden uzun sürüyor. Birincil kaynak yanıt vermezse yedek kaynaklar otomatik olarak denenir.</p>
+                        </div>
                     </div>
 
                     <div id="resultError" class="state state-error" hidden role="alert">
-                        <h2 class="state-title" id="errorTitle">Sorgu tamamlanamadı</h2>
-                        <p id="errorMessage"></p>
-                        <p class="hint mono" id="errorRef" hidden></p>
-                        <div class="state-actions">
-                            <button type="button" class="btn btn-secondary btn-sm" id="errorRetryBtn" hidden>Tekrar dene</button>
-                            <button type="button" class="btn btn-ghost btn-sm" id="errorReloadBtn" hidden>Sayfayı yenile</button>
+                        <div class="panel-head">
+                            <h2 class="state-title">
+                                <svg class="state-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v5M12 18v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                <span id="errorTitle">Sorgu tamamlanamadı</span>
+                            </h2>
+                        </div>
+                        <div class="panel-body">
+                            <p id="errorMessage"></p>
+                            <p class="hint mono" id="errorRef" hidden></p>
+                            <div class="state-actions">
+                                <button type="button" class="btn btn-secondary btn-sm" id="errorRetryBtn" hidden>Tekrar dene</button>
+                                <button type="button" class="btn btn-ghost btn-sm" id="errorReloadBtn" hidden>Sayfayı yenile</button>
+                            </div>
                         </div>
                     </div>
 
                     <div id="resultSuccess" class="state state-success" hidden>
-                        <div class="result-head">
+                        <div class="panel-head result-head">
                             <div>
                                 <h2 class="result-title">Sorgu sonucu</h2>
                                 <p class="result-sub">
@@ -209,58 +236,69 @@
                             </div>
                         </div>
 
-                        <p class="result-address" id="resAddress">—</p>
+                        <div class="panel-body">
+                            <div class="result-hero">
+                                <div class="hero-speed">
+                                    <span class="metric-label">Maksimum hız</span>
+                                    <span class="hero-value" id="resSpeed">—</span>
+                                </div>
+                                <div class="hero-facts">
+                                    <div class="hero-fact">
+                                        <span class="metric-label">Altyapı türü</span>
+                                        <span class="type-badge" id="resType">—</span>
+                                    </div>
+                                    <div class="hero-fact">
+                                        <span class="metric-label">Boş port</span>
+                                        <span class="port-badge" id="resPort">—</span>
+                                    </div>
+                                </div>
+                            </div>
 
-                        <div class="metrics">
-                            <div class="metric metric-primary">
-                                <span class="metric-label">Maksimum hız</span>
-                                <span class="metric-value" id="resSpeed">—</span>
-                            </div>
-                            <div class="metric">
-                                <span class="metric-label">Altyapı türü</span>
-                                <span class="metric-value" id="resType">—</span>
-                            </div>
-                            <div class="metric">
-                                <span class="metric-label">Boş port</span>
-                                <span class="metric-value" id="resPort">—</span>
-                            </div>
+                            <p class="result-address">
+                                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+                                <span id="resAddress">—</span>
+                            </p>
+
+                            <dl class="details">
+                                <div><dt>Santral</dt><dd id="resSantral">—</dd></div>
+                                <div id="resDistanceRow"><dt>Santral mesafesi</dt><dd id="resDistance">—</dd></div>
+                                <div><dt>Müdürlük</dt><dd id="resMudurluk">—</dd></div>
+                                <div><dt>FTTX tipi</dt><dd id="resKabin">—</dd></div>
+                            </dl>
+
+                            <p id="resNotice" class="notice" hidden></p>
                         </div>
 
-                        <dl class="details">
-                            <div><dt>Santral</dt><dd id="resSantral">—</dd></div>
-                            <div id="resDistanceRow"><dt>Santral mesafesi</dt><dd id="resDistance">—</dd></div>
-                            <div><dt>Müdürlük</dt><dd id="resMudurluk">—</dd></div>
-                            <div><dt>FTTX tipi</dt><dd id="resKabin">—</dd></div>
-                        </dl>
-
-                        <p id="resNotice" class="notice" hidden></p>
-
                         <div class="result-actions">
-                            <button type="button" class="btn btn-primary" id="copyImageBtn">
-                                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="m3 16 5-5 4 4 3-3 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                            <button type="button" class="btn btn-primary btn-lg" id="copyImageBtn">
+                                <span class="spinner" aria-hidden="true"></span>
+                                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="m3 16 5-5 4 4 3-3 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
                                 <span class="btn-label">Görseli Kopyala</span>
                             </button>
-                            <button type="button" class="btn btn-secondary" id="copyTextBtn">
+                            <button type="button" class="btn btn-secondary btn-lg" id="copyTextBtn">
                                 <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
                                 <span class="btn-label">Metni Kopyala</span>
                             </button>
+                            <span class="actions-hint">Paylaşıma hazır PNG · altyapi.frudotz.com</span>
                         </div>
                     </div>
                 </section>
 
                 <section id="lastQuerySection" class="panel last-query" aria-labelledby="lastQueryTitle" hidden>
-                    <div class="last-query-head">
+                    <div class="panel-head last-query-head">
                         <h2 id="lastQueryTitle">Son sorgu</h2>
                         <button type="button" id="refreshLastQueryBtn" class="btn btn-ghost btn-sm">Güncelle</button>
                     </div>
-                    <button type="button" class="last-query-card" id="lastQueryCard">
-                        <span class="last-query-address" id="lastQueryAddressText">—</span>
-                        <span class="last-query-meta">
-                            <span id="lastQuerySpeed">—</span>
-                            <span id="lastQueryFiber">—</span>
-                            <span id="lastQueryDate" class="last-query-date">—</span>
-                        </span>
-                    </button>
+                    <div class="panel-body">
+                        <button type="button" class="last-query-card" id="lastQueryCard">
+                            <span class="last-query-address" id="lastQueryAddressText">—</span>
+                            <span class="last-query-meta">
+                                <span id="lastQuerySpeed">—</span>
+                                <span id="lastQueryFiber">—</span>
+                                <span id="lastQueryDate" class="last-query-date">—</span>
+                            </span>
+                        </button>
+                    </div>
                 </section>
             </div>
         </div>
