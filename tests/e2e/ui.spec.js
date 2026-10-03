@@ -208,6 +208,26 @@ test.describe('result states', () => {
         expect(dialog).toBe(false);
     });
 
+    test('result panel state drives distinct styling (empty → loading → success/partial/error)', async ({ page, api }) => {
+        const panel = page.locator('#resultsSection');
+        await page.goto('/');
+        await expect(panel).toHaveAttribute('data-state', 'empty');
+        let release;
+        api.on('infra', async (p) => { await new Promise((r) => { release = r; }); return ok({ ...fixtures.infra, bbk: p.get('kapi') }); });
+        await queryBbk(page);
+        await expect(panel).toHaveAttribute('data-state', 'loading');
+        release();
+        await expect(panel).toHaveAttribute('data-state', 'success');
+        const successRule = await panel.evaluate((el) => getComputedStyle(el).boxShadow);
+        api.on('infra', () => ok({ ...fixtures.infra, santralAdi: 'Belirsiz' }));
+        await page.getByRole('button', { name: 'Sorgula' }).click();
+        await expect(panel).toHaveAttribute('data-state', 'partial');
+        api.on('infra', () => fail(503, 'UPSTREAM_UNAVAILABLE', 'x'));
+        await page.getByRole('button', { name: 'Sorgula' }).click();
+        await expect(panel).toHaveAttribute('data-state', 'error');
+        expect(await panel.evaluate((el) => getComputedStyle(el).boxShadow)).not.toBe(successRule);
+    });
+
     test('loading state is shown and the submit button is busy', async ({ page, api }) => {
         let release;
         api.on('infra', async (p) => { await new Promise((r) => { release = r; }); return ok({ ...fixtures.infra, bbk: p.get('kapi') }); });

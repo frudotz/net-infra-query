@@ -7,9 +7,12 @@ import { $ } from './ui.js';
 const STATES = ['resultEmpty', 'resultLoading', 'resultError', 'resultSuccess'];
 let slowTimer = null;
 
-function show(id) {
+function show(id, state) {
     for (const s of STATES) $(s).hidden = s !== id;
-    $('resultsSection').setAttribute('aria-busy', String(id === 'resultLoading'));
+    const section = $('resultsSection');
+    section.setAttribute('aria-busy', String(id === 'resultLoading'));
+    // Drives the state-specific accent (top rule colour) in CSS.
+    section.dataset.state = state;
 }
 
 function setValue(el, value) {
@@ -22,7 +25,7 @@ export function showLoading(label) {
     $('loadingText').textContent = label;
     $('loadingSlowText').hidden = true;
     slowTimer = setTimeout(() => { $('loadingSlowText').hidden = false; }, 6000);
-    show('resultLoading');
+    show('resultLoading', 'loading');
 }
 
 const ERROR_TITLES = {
@@ -58,7 +61,7 @@ export function showError(err, { onRetry } = {}) {
     const reloadBtn = $('errorReloadBtn');
     reloadBtn.hidden = !RELOAD_CODES.has(code);
     reloadBtn.onclick = () => window.location.reload();
-    show('resultError');
+    show('resultError', 'error');
 }
 
 export function showSuccess(vm) {
@@ -81,7 +84,9 @@ export function showSuccess(vm) {
 
     setValue($('resAddress'), vm.address);
     setValue($('resSpeed'), vm.maxSpeed);
-    setValue($('resType'), vm.type);
+    const type = $('resType');
+    setValue(type, vm.type);
+    type.dataset.type = vm.type ? vm.type.toLowerCase() : '';
     const port = $('resPort');
     setValue(port, vm.portStatus);
     port.classList.toggle('port-yes', vm.portStatus === 'Var');
@@ -96,5 +101,5 @@ export function showSuccess(vm) {
     notice.textContent = status.notice || '';
     notice.classList.toggle('is-info', status.noticeTone === 'info');
 
-    show('resultSuccess');
+    show('resultSuccess', vm.partial ? 'partial' : 'success');
 }
