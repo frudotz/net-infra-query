@@ -58,7 +58,7 @@ function defaultHandlers() {
                 province: fixtures.provinces, district: fixtures.districts[id] || [], neighborhood: fixtures.neighborhoods,
                 street: fixtures.streets, building: fixtures.buildings, apartment: fixtures.apartments,
             };
-            return { status: 200, body: { success: true, data: lists[level], meta: { source: 'primary' } } };
+            return { status: 200, body: { success: true, data: lists[level], meta: { source: 'primary', scope: 'a1' } } };
         },
         infra: (p) => ok({ ...fixtures.infra, bbk: p.get('kapi') }),
         geocode: () => ok({ address: { province: 'İstanbul', town: 'Kadıköy', suburb: 'Caferağa', road: 'Moda Caddesi', house_number: '12' }, accurate: true }),

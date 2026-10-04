@@ -37,6 +37,7 @@ export function createAddressForm() {
         seq: 0,
         controller: null,
         parentId: null,
+        scope: null,
         list: [],
     }));
 
@@ -64,6 +65,7 @@ export function createAddressForm() {
             level.controller = null;
             level.list = [];
             level.parentId = null;
+            level.scope = null;
             setOptions(level.select, level.waiting);
             level.select.disabled = true;
             setMessage(level, '');
@@ -80,9 +82,12 @@ export function createAddressForm() {
         setOptions(level.select, 'Yükleniyor…');
         level.select.setAttribute('aria-busy', 'true');
         try {
-            const list = await fetchAddressList(level.key, parentId, { signal: level.controller.signal });
+            // IDs are provider-specific: ask the provider that issued the parent ID.
+            const parentScope = index > 0 ? levels[index - 1].scope : null;
+            const { list, scope } = await fetchAddressList(level.key, parentId, { signal: level.controller.signal, scope: parentScope });
             if (seq !== level.seq) return null;
             level.list = list;
+            level.scope = scope;
             setOptions(level.select, level.placeholder, list);
             level.select.disabled = false;
             if (list.length === 0) setMessage(level, 'Bu seçim için kayıt bulunamadı.');

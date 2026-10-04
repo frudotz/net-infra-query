@@ -32,6 +32,51 @@ test.describe('query flow', () => {
         await page.screenshot({ path: `${OUT}/desktop-success.png`, fullPage: true });
     });
 
+    test('provider scope propagates down the cascade; one apartment request per building selection', async ({ page, api }) => {
+        await page.goto('/');
+        await fillAddress(page);
+        const addr = api.calls.filter((c) => c.action === 'address');
+        expect(addr.map((c) => [c.params.level, c.params.id ?? null, c.params.scope ?? null])).toEqual([
+            ['province', null, null],
+            ['district', '34', 'a1'],
+            ['neighborhood', '1421', 'a1'],
+            ['street', '40002', 'a1'],
+            ['building', '50001', 'a1'],
+            ['apartment', '60001', 'a1'],
+        ]);
+        expect(addr.filter((c) => c.params.level === 'apartment')).toHaveLength(1);
+        // Re-selecting a building issues exactly one new lookup for that building.
+        await page.selectOption('#building', '60002');
+        await expect(page.locator('#apartment option[value="1234567890"]')).toBeAttached();
+        const apt = api.calls.filter((c) => c.action === 'address' && c.params.level === 'apartment');
+        expect(apt.map((c) => c.params.id)).toEqual(['60001', '60002']);
+    });
+
+    test('a provider outage at the apartment step is shown as an outage with retry, not as "no records"', async ({ page, api }) => {
+        let failApartment = true;
+        const base = api;
+        api.on('address', (p) => {
+            const level = p.get('level');
+            if (level === 'apartment' && failApartment) {
+                failApartment = false;
+                return fail(503, 'UPSTREAM_UNAVAILABLE', 'Adres servisine şu an ulaşılamıyor. Lütfen biraz sonra tekrar deneyin.');
+            }
+            const lists = { province: fixtures.provinces, district: fixtures.districts[34], neighborhood: fixtures.neighborhoods, street: fixtures.streets, building: fixtures.buildings, apartment: fixtures.apartments };
+            return { status: 200, body: { success: true, data: lists[level], meta: { source: 'primary', scope: 'a1' } } };
+        });
+        await page.goto('/');
+        for (const [sel, value] of [['#province', '34'], ['#district', '1421'], ['#neighborhood', '40002'], ['#street', '50001'], ['#building', '60001']]) {
+            await expect(page.locator(`${sel} option[value="${value}"]`)).toBeAttached();
+            await page.selectOption(sel, value);
+        }
+        await expect(page.locator('#apartment-msg')).toContainText('Adres servisine şu an ulaşılamıyor');
+        await expect(page.locator('#apartment-msg')).not.toContainText('kayıt bulunamadı');
+        await page.locator('#apartment-msg').getByRole('button', { name: 'Tekrar dene' }).click();
+        await expect(page.locator('#apartment option[value="1234567890"]')).toBeAttached();
+        const retry = base.calls.filter((c) => c.action === 'address' && c.params.level === 'apartment').at(-1);
+        expect(retry.params).toEqual({ action: 'address', level: 'apartment', id: '60001', scope: 'a1' });
+    });
+
     test('changing a parent level clears dependent levels; stale responses are ignored', async ({ page, api }) => {
         let releaseSlow;
         api.on('address', async (p) => {

@@ -79,7 +79,7 @@ test('primary provider serves the result', async ({ page }) => {
     await page.selectOption('#neighborhood', '40836');
     await expect(page.locator('#street option')).toHaveText(['Cadde / sokak seçin', 'ŞEHİT YAŞAR GÜLEÇ SK.']);
     await page.selectOption('#street', '747026');
-    await expect(page.locator('#building option')).toHaveText(['Bina seçin', '12']);
+    await expect(page.locator('#building option')).toHaveText(['Bina seçin', '12', '14']);
     await page.selectOption('#building', '17576004');
     await expect(page.locator('#apartment option')).toHaveText(['Daire seçin', 'İç Kapı 1', 'İç Kapı 2']);
     const allOptions = await page.locator('select option').allTextContents();
@@ -91,6 +91,23 @@ test('primary provider serves the result', async ({ page }) => {
     await expect(page.locator('#resSantral')).toHaveText('ÇANKAYA');
     await expect(page.locator('#resAddress')).toHaveText('KIZILAY MAH. ATATÜRK BLV. NO: 5 ÇANKAYA/ANKARA');
     await expect(page.locator('#resSourceChip')).toBeHidden();
+});
+
+test('apartment step: DSmart Daire outage is reported as an outage; TT never receives a DSmart building id', async ({ page }) => {
+    await upstreams.setModes({ dsmart_daire: 'down' });
+    await page.goto('/');
+    // Building 17576005 is not looked up by any earlier test, so nothing is cached for it.
+    for (const [sel, value] of [['#province', '34'], ['#district', '1739'], ['#neighborhood', '40836'], ['#street', '747026'], ['#building', '17576005']]) {
+        await expect(page.locator(`${sel} option[value="${value}"]`)).toBeAttached();
+        await page.selectOption(sel, value);
+    }
+    await expect(page.locator('#apartment-msg')).toContainText('ulaşılamıyor');
+    const hits = await upstreams.hits();
+    expect(hits.filter((h) => h.startsWith('tt_apartment:'))).toEqual([]);
+    // Provider recovers → the field's retry loads real apartments from DSmart.
+    await upstreams.setModes({});
+    await page.locator('#apartment-msg').getByRole('button', { name: 'Tekrar dene' }).click();
+    await expect(page.locator('#apartment option')).toHaveText(['Daire seçin', 'İç Kapı 1', 'İç Kapı 2']);
 });
 
 test('primary down → backup result rendered and exported identically', async ({ page }) => {

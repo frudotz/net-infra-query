@@ -185,24 +185,34 @@ export async function apiGet(params, { signal, timeoutMs = 25_000 } = {}) {
 }
 
 // Address lists rarely change: memoise per page load and share in-flight requests.
+// Each response carries an opaque `meta.scope` identifying the provider that
+// issued its IDs; child lookups send it back so the backend never passes one
+// provider's ID to another provider.
 const addressCache = new Map();
 
-export function fetchAddressList(level, id, { signal } = {}) {
-    const key = `${level}:${id || ''}`;
-    if (addressCache.has(key)) return addressCache.get(key);
+/** Resolves to { list, scope }. */
+export function fetchAddressList(level, id, { signal, scope } = {}) {
+    const key = `${level}:${id || ''}:${scope || ''}`;
+    if (addressCache.has(key)) return withAbort(addressCache.get(key), signal);
     const params = { action: 'address', level };
     if (id) params.id = id;
-    const p = apiGet(params, { timeoutMs: 15_000 }).then((body) => (Array.isArray(body.data) ? body.data : []));
+    if (scope) params.scope = scope;
+    const p = apiGet(params, { timeoutMs: 15_000 }).then((body) => ({
+        list: Array.isArray(body.data) ? body.data : [],
+        scope: typeof body.meta?.scope === 'string' ? body.meta.scope : null,
+    }));
     addressCache.set(key, p);
     p.catch(() => addressCache.delete(key));
-    // Callers may abandon a stale request; the shared promise keeps running for others.
-    if (signal) {
-        return new Promise((resolve, reject) => {
-            signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
-            p.then(resolve, reject);
-        });
-    }
-    return p;
+    return withAbort(p, signal);
+}
+
+// Callers may abandon a stale request; the shared promise keeps running for others.
+function withAbort(p, signal) {
+    if (!signal) return p;
+    return new Promise((resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+        p.then(resolve, reject);
+    });
 }
 
 export function fetchInfra(bbk, il) {
