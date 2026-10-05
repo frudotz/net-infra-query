@@ -1,0 +1,159 @@
+// Full stack: real frontend → real worker (wrangler dev / workerd) → local
+// mock upstream providers. Requires the niq-api repository checked out next
+// to this one (../niq-api with `npm install` done); skipped otherwise.
+import { test as base, expect } from '@playwright/test';
+import { spawn } from 'node:child_process';
+import { existsSync, rmSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { stubThirdParty, API } from './fixtures.js';
+
+const NIQ = fileURLToPath(new URL('../../../niq-api/', import.meta.url));
+const available = existsSync(`${NIQ}node_modules/.bin/wrangler`);
+const PORT = 8798;
+const SECRET = 'fullstack-secret';
+
+const test = base;
+test.skip(!available, 'niq-api checkout with dependencies not found next to this repo');
+
+let upstreams;
+let wrangler;
+let token;
+
+test.beforeAll(async () => {
+    test.setTimeout(120_000);
+    const { startMockUpstreams } = await import(pathToFileURL(`${NIQ}test/e2e/mock-upstreams.js`).href);
+    const { signToken } = await import(pathToFileURL(`${NIQ}src/auth.js`).href);
+    upstreams = await startMockUpstreams();
+    rmSync(`${NIQ}.wrangler/fullstack-state`, { recursive: true, force: true });
+    const vars = {
+        DEV_ALLOW_HTTP_UPSTREAMS: 'true', JWT_SECRET: SECRET, TURNSTILE_SECRET: 'unused',
+        INFRA_SOURCE_1: `${upstreams.base}/prov1`, INFRA_SOURCE_2: `${upstreams.base}/prov2`,
+        INFRA_SOURCE_3: `${upstreams.base}/prov4`, INFRA_SOURCE: `${upstreams.base}/legacy/TT_Altyapi.php`,
+        ADDR_SOURCE_1: `${upstreams.base}/prov3/api/v1/public/search/internet`, ADDR_SOURCE_1_ADAPTER: 'adapter3', // Prov3 primary
+        ADDRESS_SOURCE: `${upstreams.base}/legacy/TT_`,
+    };
+    const args = ['wrangler', 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', '.wrangler/fullstack-state', '--show-interactive-dev-session=false'];
+    for (const [k, v] of Object.entries(vars)) args.push('--var', `${k}:${v}`);
+    wrangler = spawn('npx', args, { cwd: NIQ, env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost', WRANGLER_SEND_METRICS: 'false' }, stdio: 'ignore', detached: true });
+    for (let i = 0; i < 120; i++) {
+        try { await fetch(`http://127.0.0.1:${PORT}/`); break; } catch { await new Promise((r) => setTimeout(r, 500)); }
+    }
+    token = await signToken({ ip: '127.0.0.1', exp: Date.now() + 3_600_000 }, SECRET);
+});
+
+test.afterAll(async () => {
+    if (wrangler) { try { process.kill(-wrangler.pid, 'SIGTERM'); } catch { /* gone */ } }
+    await upstreams?.close();
+});
+
+test.beforeEach(async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await stubThirdParty(page);
+    // Real Turnstile verification needs Cloudflare; start with a session the worker itself signed.
+    await page.addInitScript((t) => sessionStorage.setItem('api_token', t), token);
+    // Forward API calls to the local worker as if they came from the production origin.
+    await page.route(`${API}/**`, async (route) => {
+        const url = new URL(route.request().url());
+        const response = await route.fetch({
+            url: `http://127.0.0.1:${PORT}${url.pathname}${url.search}`,
+            headers: { ...route.request().headers(), origin: 'https://altyapi.frudotz.com' },
+        });
+        const headers = { ...response.headers(), 'access-control-allow-origin': 'http://127.0.0.1:4173' };
+        await route.fulfill({ response, headers });
+    });
+});
+
+let bbk = 7000;
+
+test('primary provider serves the result', async ({ page }) => {
+    await upstreams.setModes({});
+    await page.goto('/');
+    await expect(page.locator('#province option[value="34"]')).toBeAttached();
+    // Real names from Prov3 (primary), never its "Il" / "Ilce" type field.
+    await expect(page.locator('#province option')).toHaveText(['İl seçin', 'ANKARA', 'İSTANBUL', 'İZMİR']);
+    expect(await upstreams.hits()).toContain('prov3');
+    await page.selectOption('#province', '34');
+    await expect(page.locator('#district option')).toHaveText(['İlçe seçin', 'ADALAR', 'ATAŞEHİR', 'ZEYTİNBURNU']);
+    await page.selectOption('#district', '1739');
+    await expect(page.locator('#neighborhood option')).toHaveText(['Mahalle seçin', 'BEŞTELSİZ MAH.', 'ÇIRPICI MAH.']);
+    await page.selectOption('#neighborhood', '40836');
+    await expect(page.locator('#street option')).toHaveText(['Cadde / sokak seçin', 'ŞEHİT YAŞAR GÜLEÇ SK.']);
+    await page.selectOption('#street', '747026');
+    await expect(page.locator('#building option')).toHaveText(['Bina seçin', '12', '14']);
+    await page.selectOption('#building', '17576004');
+    await expect(page.locator('#apartment option')).toHaveText(['Daire seçin', 'İç Kapı 1', 'İç Kapı 2']);
+    const allOptions = await page.locator('select option').allTextContents();
+    for (const t of ['Il', 'Ilce', 'Bucak', 'Koy', 'Mahalle', 'CaddeSokak', 'Bina', 'Daire']) expect(allOptions).not.toContain(t);
+    await page.getByRole('tab', { name: 'BBK ile' }).click();
+    await page.fill('#bbkInput', String(++bbk));
+    await page.getByRole('button', { name: 'Sorgula' }).click();
+    await expect(page.locator('#resultSuccess')).toBeVisible();
+    await expect(page.locator('#resSantral')).toHaveText('ÇANKAYA');
+    await expect(page.locator('#resAddress')).toHaveText('KIZILAY MAH. ATATÜRK BLV. NO: 5 ÇANKAYA/ANKARA');
+    await expect(page.locator('#resSourceChip')).toBeHidden();
+});
+
+test('apartment step: Prov3 Daire outage is reported as an outage; legacy never receives a Prov3 building id', async ({ page }) => {
+    await upstreams.setModes({ prov3_daire: 'down' });
+    await page.goto('/');
+    // Building 17576005 is not looked up by any earlier test, so nothing is cached for it.
+    for (const [sel, value] of [['#province', '34'], ['#district', '1739'], ['#neighborhood', '40836'], ['#street', '747026'], ['#building', '17576005']]) {
+        await expect(page.locator(`${sel} option[value="${value}"]`)).toBeAttached();
+        await page.selectOption(sel, value);
+    }
+    await expect(page.locator('#apartment-msg')).toContainText('ulaşılamıyor');
+    const hits = await upstreams.hits();
+    expect(hits.filter((h) => h.startsWith('legacy_apartment:'))).toEqual([]);
+    // Provider recovers → the field's retry loads real apartments from Prov3.
+    await upstreams.setModes({});
+    await page.locator('#apartment-msg').getByRole('button', { name: 'Tekrar dene' }).click();
+    await expect(page.locator('#apartment option')).toHaveText(['Daire seçin', 'İç Kapı 1', 'İç Kapı 2']);
+});
+
+test('primary down → backup result rendered and exported identically', async ({ page }) => {
+    await upstreams.setModes({ prov1: 'down', prov2: 'html' });
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'BBK ile' }).click();
+    await page.fill('#bbkInput', String(++bbk));
+    await page.getByRole('button', { name: 'Sorgula' }).click();
+    await expect(page.locator('#resultSuccess')).toBeVisible();
+    await expect(page.locator('#resType')).toHaveText('Fiber');
+    await expect(page.locator('#resSourceChip')).toHaveText('Yedek kaynak');
+    await expect(page.locator('#resAddress')).toContainText('CAFERAĞA');
+    await page.evaluate(() => {
+        window.__drawn = [];
+        const orig = CanvasRenderingContext2D.prototype.fillText;
+        CanvasRenderingContext2D.prototype.fillText = function (t, ...r) { window.__drawn.push(String(t)); return orig.call(this, t, ...r); };
+    });
+    await page.getByRole('button', { name: 'Görseli Kopyala' }).click();
+    await expect(page.locator('.toast')).toContainText('panoya kopyalandı');
+    const drawn = await page.evaluate(() => window.__drawn);
+    expect(drawn).toContain('Yedek kaynak');
+    expect(drawn).toContain('altyapi.frudotz.com');
+    expect(drawn).toContain('1000 Mbps');
+});
+
+test('total outage → controlled error with retry', async ({ page }) => {
+    await upstreams.setModes({ prov1: 'down', prov2: 'down', prov4: 'down', legacy: 'down' });
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'BBK ile' }).click();
+    await page.fill('#bbkInput', String(++bbk));
+    await page.getByRole('button', { name: 'Sorgula' }).click();
+    await expect(page.locator('#errorTitle')).toHaveText('Altyapı kaynaklarına ulaşılamıyor');
+    await expect(page.locator('#errorRetryBtn')).toBeVisible();
+    await expect(page.locator('#errorRef')).toContainText('Destek için referans');
+    // Providers recover → retry succeeds.
+    await upstreams.setModes({});
+    await page.getByRole('button', { name: 'Tekrar dene' }).click();
+    await expect(page.locator('#resultSuccess')).toBeVisible();
+});
+
+test('invalid BBK rejected by the real backend surfaces its message', async ({ page }) => {
+    await page.goto('/');
+    const res = await page.evaluate(async ([api, t]) => {
+        const r = await fetch(`${api}/?action=infra&kapi=12x&il=6`, { headers: { Authorization: `Bearer ${t}` } });
+        return { status: r.status, body: await r.json() };
+    }, [API, token]);
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('VALIDATION_ERROR');
+});
