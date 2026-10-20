@@ -2,3 +2,8 @@ node_modules/
 test-results/
 playwright-report/
 tests/output/
+
+# Local Obsidian vault (documentation only, never committed)
+Altyapi-Frontend-Vault/
+# Stray nested directory holding local Obsidian config (never committed)
+/net-infra-query/

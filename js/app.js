@@ -10,6 +10,13 @@ import { showError, showLoading, showSuccess } from './result-view.js';
 import { $, announce, flashLabel, setButtonBusy, showToast } from './ui.js';
 
 const BBK_RE = /^\d{1,15}$/;
+// A BBK is a positive identifier: digits only, at most 15, not all zeros (the
+// backend applies the same rule). The selected apartment id is sent as the BBK
+// of the lookup, so a row that fails this can only ever produce a 400: refuse
+// it here instead of sending it.
+const isValidBbk = (value) => BBK_RE.test(value) && /[1-9]/.test(value);
+const isValidApartmentId = isValidBbk;
+const INVALID_APARTMENT_MESSAGE = 'Bu daire kaydı sorgulanamıyor. Lütfen listeden başka bir daire seçin.';
 const LAST_QUERY_KEY = 'lastQuery';
 const BBK_MODE_IL = '7'; // The original UI sent il=7 for direct BBK lookups; kept for the generic adapter.
 
@@ -133,8 +140,12 @@ async function runQuery(bbk, il, { isRefresh = false } = {}) {
     } catch (err) {
         const apiErr = err instanceof ApiError ? err : new ApiError('Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.', { code: 'UNKNOWN' });
         if (!(err instanceof ApiError)) console.error(err);
-        showError(apiErr, { onRetry: () => runQuery(bbk, il, { isRefresh }) });
-        announce(apiErr.message);
+        // A 400 in address mode means the selected record, not typed input, was rejected.
+        const shown = apiErr.code === 'VALIDATION_ERROR' && mode === 'address'
+            ? new ApiError(INVALID_APARTMENT_MESSAGE, { code: 'INVALID_ADDRESS_SELECTION', status: apiErr.status, requestId: apiErr.requestId })
+            : apiErr;
+        showError(shown, { onRetry: () => runQuery(bbk, il, { isRefresh }) });
+        announce(shown.message);
     } finally {
         querying = false;
         setButtonBusy(submitBtn, false);
@@ -173,6 +184,11 @@ function initForm(addressForm) {
                 input.focus();
                 return;
             }
+            if (!isValidBbk(bbk)) {
+                setBbkError('BBK numarası yalnızca sıfırlardan oluşamaz.');
+                input.focus();
+                return;
+            }
             runQuery(bbk, BBK_MODE_IL);
             return;
         }
@@ -182,7 +198,12 @@ function initForm(addressForm) {
             missing.select.focus();
             return;
         }
-        runQuery(addressForm.value('apartment'), addressForm.value('province'));
+        const apartmentId = addressForm.value('apartment');
+        if (!isValidApartmentId(apartmentId)) {
+            addressForm.markInvalid('apartment', INVALID_APARTMENT_MESSAGE)?.focus();
+            return;
+        }
+        runQuery(apartmentId, addressForm.value('province'));
     });
 }
 

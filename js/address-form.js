@@ -124,6 +124,14 @@ export function createAddressForm() {
             return true;
         },
         value: (key) => levels.find((l) => l.key === key)?.select.value || '',
+        /** Shows an inline error on a level (cleared on the next change). Returns its select for focusing. */
+        markInvalid(key, message) {
+            const level = levels.find((l) => l.key === key);
+            if (!level) return null;
+            setMessage(level, message, { error: true });
+            level.select.setAttribute('aria-invalid', 'true');
+            return level.select;
+        },
         selectedName(key) {
             const sel = levels.find((l) => l.key === key)?.select;
             return sel && sel.value ? sel.options[sel.selectedIndex]?.textContent || '' : '';
