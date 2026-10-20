@@ -1,5 +1,5 @@
 import { test, expect, fixtures, queryBbk, ok } from './fixtures.js';
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 
 const OUT = 'tests/output';
 
@@ -17,6 +17,7 @@ async function readClipboardImage(page) {
 }
 
 function save(name, dataUrl) {
+    mkdirSync(OUT, { recursive: true }); // git-ignored; absent on a fresh checkout
     writeFileSync(`${OUT}/${name}`, Buffer.from(dataUrl.split(',')[1], 'base64'));
 }
 
