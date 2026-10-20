@@ -2,13 +2,16 @@
 // mock upstream providers. Requires the niq-api repository checked out next
 // to this one (../niq-api with `npm install` done); skipped otherwise.
 import { test as base, expect } from '@playwright/test';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { stubThirdParty, API } from './fixtures.js';
 
 const NIQ = fileURLToPath(new URL('../../../niq-api/', import.meta.url));
-const available = existsSync(`${NIQ}node_modules/.bin/wrangler`);
+// Run the backend's own wrangler through node: no PATH/npx lookup (ENOENT on Windows), no shell.
+const WRANGLER = `${NIQ}node_modules/wrangler/bin/wrangler.js`;
+const WINDOWS = process.platform === 'win32';
+const available = existsSync(WRANGLER);
 const PORT = 8798;
 const SECRET = 'fullstack-secret';
 
@@ -32,9 +35,10 @@ test.beforeAll(async () => {
         ADDR_SOURCE_1: `${upstreams.base}/prov3/api/v1/public/search/internet`, ADDR_SOURCE_1_ADAPTER: 'adapter3', // Prov3 primary
         ADDRESS_SOURCE: `${upstreams.base}/legacy/TT_`,
     };
-    const args = ['wrangler', 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', '.wrangler/fullstack-state', '--show-interactive-dev-session=false'];
+    const args = [WRANGLER, 'dev', '--port', String(PORT), '--ip', '127.0.0.1', '--persist-to', '.wrangler/fullstack-state', '--show-interactive-dev-session=false'];
     for (const [k, v] of Object.entries(vars)) args.push('--var', `${k}:${v}`);
-    wrangler = spawn('npx', args, { cwd: NIQ, env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost', WRANGLER_SEND_METRICS: 'false' }, stdio: 'ignore', detached: true });
+    // POSIX: own process group so the wrangler + workerd tree is signalled at once; Windows has none (detached would only open a console window).
+    wrangler = spawn(process.execPath, args, { cwd: NIQ, env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost', WRANGLER_SEND_METRICS: 'false' }, stdio: 'ignore', detached: !WINDOWS, windowsHide: true });
     for (let i = 0; i < 120; i++) {
         try { await fetch(`http://127.0.0.1:${PORT}/`); break; } catch { await new Promise((r) => setTimeout(r, 500)); }
     }
@@ -42,7 +46,12 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-    if (wrangler) { try { process.kill(-wrangler.pid, 'SIGTERM'); } catch { /* gone */ } }
+    if (wrangler && wrangler.exitCode === null && wrangler.signalCode === null) {
+        try {
+            if (WINDOWS) spawnSync('taskkill', ['/pid', String(wrangler.pid), '/T', '/F'], { stdio: 'ignore' });
+            else process.kill(-wrangler.pid, 'SIGTERM');
+        } catch { /* gone */ }
+    }
     await upstreams?.close();
 });
 
