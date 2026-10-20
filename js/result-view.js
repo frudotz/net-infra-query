@@ -31,6 +31,7 @@ export function showLoading(label) {
 const ERROR_TITLES = {
     NO_DATA: 'Kayıt bulunamadı',
     VALIDATION_ERROR: 'Geçersiz giriş',
+    INVALID_ADDRESS_SELECTION: 'Seçilen daire sorgulanamadı',
     RATE_LIMITED: 'İstek sınırı aşıldı',
     DAILY_LIMIT: 'Günlük sorgu hakkı doldu',
     UPSTREAM_UNAVAILABLE: 'Altyapı kaynaklarına ulaşılamıyor',
